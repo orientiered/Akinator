@@ -2,6 +2,8 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
+#include "error_debug.h"
+
 /*------------------LOGGER----------------------------------------------------*/
 /*------------------WITH DYNAMIC LOG LEVEL TO DEBUG NECESSARY CODE------------*/
 /*------------------orientiered MIPT 2024-------------------------------------*/
@@ -41,6 +43,9 @@ enum status logPrintWithTime(enum LogLevel level, bool copyToStderr, const char*
 
 /// @brief Print in log file
 enum status logPrint(enum LogLevel level, bool copyToStderr, const char* fmt, ...);
+
+/// @brief logPrint but for wide strings
+enum status wlogPrint(enum LogLevel level, bool copyToStderr, const wchar_t* fmt, ...);
 
 /// @brief Print with color in html mode
 enum status logPrintColor(enum LogLevel level, const char *color, const char *background, const char *fmt, ...);

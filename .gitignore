@@ -2,3 +2,5 @@ build/
 logs/
 .vscode/
 *.out
+*.pt
+*.wav

@@ -4,12 +4,14 @@
 #include <stdint.h>
 
 typedef int (*cmpFunction_t)(const void *a, const void *b);
-typedef int (*printFunction_t)(char *buffer, const void *a);
+typedef int (*printFunction_t)(void *buffer, const void *a);
 
 enum treeStatus {
     TREE_SUCCESS = 0,
     TREE_ERROR   = 1,
 
+    TREE_PARENT_ERROR,
+    TREE_SORT_ERROR
 };
 
 
@@ -35,8 +37,8 @@ typedef struct node {
 enum treeStatus treeCtor(node_t *tree, const void *elem, size_t elemSize);
 enum treeStatus treeDtor(node_t *tree);
 
-enum treeStatus treeVerify(node_t *tree);
-enum treeStatus treeDump(node_t *tree, printFunction_t print);
+enum treeStatus treeVerify(const node_t *tree, cmpFunction_t cmp);
+enum treeStatus treeDump(const node_t *tree, printFunction_t print);
 
 /// @brief Insert using cmp function
 /// WARNING: Function doesn't do anything if cmp == NULL
@@ -53,6 +55,35 @@ node_t *treeAdd(node_t *node, const void *elem, bool right);
 node_t *treeFind(node_t *tree, const void *elem, cmpFunction_t cmp);
 
 node_t *nodeCtor(const void *elem, node_t *parent, size_t elemSize);
+
+#ifndef NDEBUG
+
+#define TREE_ASSERT(node, cmp)                                                                  \
+        do {                                                                                    \
+            enum treeStatus status = treeVerify(node, cmp);                                     \
+            if (status != TREE_SUCCESS) {                                                       \
+                logPrint(L_ZERO, 1, "%s:%d | %s:Tree[%p] error occurred: error_code = %d\n",    \
+                        __FILE__, __LINE__, __PRETTY_FUNCTION__, node, status);                 \
+                return status;                                                                  \
+            }                                                                                   \
+        } while(0)
+
+#define TREE_NODE_ASSERT(node, cmp)                                                             \
+        do {                                                                                    \
+            enum treeStatus status = treeVerify(node, cmp);                                     \
+            if (status != TREE_SUCCESS) {                                                       \
+                logPrint(L_ZERO, 1, "%s:%d | %s:Tree[%p] error occurred: error_code = %d\n",    \
+                        __FILE__, __LINE__, __PRETTY_FUNCTION__, node, status);                 \
+                return NULL;                                                                    \
+            }                                                                                   \
+        } while(0)
+
+#else
+
+#define TREE_ASSERT(...)
+#define TREE_NODE_ASSERT(...)
+
+#endif
 
 
 

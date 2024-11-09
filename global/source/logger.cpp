@@ -159,6 +159,24 @@ enum status logPrint(enum LogLevel level, bool copyToStderr, const char* fmt, ..
     return SUCCESS;
 }
 
+enum status wlogPrint(enum LogLevel level, bool copyToStderr, const wchar_t* fmt, ...) {
+    MY_ASSERT(logger.logFile, abort());
+    if (level > logger.logLevel)
+        return SUCCESS;
+
+    va_list args;
+
+    if (copyToStderr) {
+        va_start(args, fmt);
+        vfwprintf(stderr, fmt, args);
+    }
+    va_start(args, fmt);
+    vfwprintf(logger.logFile, fmt, args);
+
+    va_end(args);
+    return SUCCESS;
+}
+
 enum status logPrintColor(enum LogLevel level, const char *color, const char *background, const char *fmt, ...) {
     MY_ASSERT(logger.logFile, abort());
     if (level > logger.logLevel)
