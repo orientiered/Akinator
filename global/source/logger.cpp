@@ -3,8 +3,8 @@
 #include <string.h>
 #include <time.h>
 #include <stdarg.h>
+#include <wchar.h>
 
-#include "error_debug.h"
 #include "logger.h"
 
 typedef struct {
@@ -14,6 +14,7 @@ typedef struct {
     enum LogMode  logMode;
 } logState_t;
 
+static wchar_t conversionBuffer[4096] = L"";
 static logState_t logger = {.logFileName    = "log.txt",
                             .logFile        = NULL,
                             .logLevel       = L_ZERO,
@@ -33,7 +34,7 @@ static struct tm getTime() {
 static void logTime() {
     MY_ASSERT(logger.logFile, abort());
     struct tm currentTime = getTime();
-    fprintf(logger.logFile, "[%.2d.%.2d.%d %.2d:%.2d:%.2d] ",
+    fwprintf(logger.logFile, L"[%.2d.%.2d.%d %.2d:%.2d:%.2d] ",
         currentTime.tm_mday, currentTime.tm_mon, currentTime.tm_year + 1900,
         currentTime.tm_hour, currentTime.tm_min, currentTime.tm_sec);
 }
@@ -68,7 +69,7 @@ enum status logOpen(const char *fileName, enum LogMode mode) {
 
     logger.logMode = mode;
     if ((mode != L_TXT_MODE) && (mode != L_HTML_MODE)) {
-        fprintf(stderr, "Unknown logging mode\n");
+        fwprintf(stderr, L"Unknown logging mode\n");
         return ERROR;
     }
 
@@ -76,14 +77,17 @@ enum status logOpen(const char *fileName, enum LogMode mode) {
         return ERROR;
 
     logger.logFile = fopen(logger.logFileName, "w");
-    if (!logger.logFile) return ERROR;
+    if (!logger.logFile) {
+       fwprintf(stderr, L"Failed to open logFile\n");
+       return ERROR;
+    }
 
     if (mode == L_HTML_MODE)
-        fprintf(logger.logFile, "<!DOCTYPE html>\n<pre>\n");
+        fwprintf(logger.logFile, L"<!DOCTYPE html>\n<pre>\n");
 
-    fprintf(logger.logFile, "------------------------------------------\n");
+    fwprintf(logger.logFile, L"------------------------------------------\n");
     logTime();
-    fprintf(logger.logFile, "Starting logging session\n");
+    fwprintf(logger.logFile, L"Starting logging session\n");
     return SUCCESS;
 }
 
@@ -104,11 +108,11 @@ enum status logClose() {
 
 
     logTime();
-    fprintf(logger.logFile, "Ending logging session \n");
-    fprintf(logger.logFile, "-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*\n");
+    fwprintf(logger.logFile, L"Ending logging session \n");
+    fwprintf(logger.logFile, L"-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*\n");
 
     if (logger.logMode == L_HTML_MODE)
-        fprintf(logger.logFile, "</pre>");
+        fwprintf(logger.logFile, L"</pre>");
     fclose(logger.logFile);
 
     return SUCCESS;
@@ -135,7 +139,8 @@ enum status logPrintWithTime(enum LogLevel level, bool copyToStderr, const char*
     }
     va_start(args, fmt);
     logTime();
-    vfprintf(logger.logFile, fmt, args);
+    mbstowcs(conversionBuffer, fmt, 4096);
+    vfwprintf(logger.logFile, conversionBuffer, args);
 
     va_end(args);
     return SUCCESS;
@@ -147,15 +152,18 @@ enum status logPrint(enum LogLevel level, bool copyToStderr, const char* fmt, ..
         return SUCCESS;
 
     va_list args;
+    va_start(args, fmt);
+    mbstowcs(conversionBuffer, fmt, 4096);
+    vfwprintf(logger.logFile, conversionBuffer, args);
+    va_end(args);
 
     if (copyToStderr) {
-        va_start(args, fmt);
-        vfprintf(stderr, fmt, args);
+        va_list argsStderr;
+        va_start(argsStderr, fmt);
+        vfprintf(stderr, fmt, argsStderr);
+        va_end(argsStderr);
     }
-    va_start(args, fmt);
-    vfprintf(logger.logFile, fmt, args);
 
-    va_end(args);
     return SUCCESS;
 }
 
@@ -164,16 +172,18 @@ enum status wlogPrint(enum LogLevel level, bool copyToStderr, const wchar_t* fmt
     if (level > logger.logLevel)
         return SUCCESS;
 
-    va_list args;
 
-    if (copyToStderr) {
-        va_start(args, fmt);
-        vfwprintf(stderr, fmt, args);
-    }
+    va_list args;
     va_start(args, fmt);
     vfwprintf(logger.logFile, fmt, args);
-
     va_end(args);
+
+    if (copyToStderr) {
+        va_list argsStderr;
+        va_start(argsStderr, fmt);
+        vfwprintf(stderr, fmt, argsStderr);
+        va_end(argsStderr);
+    }
     return SUCCESS;
 }
 

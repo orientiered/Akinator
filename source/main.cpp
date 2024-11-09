@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <wchar.h>
+#include <locale.h>
 
 #include "error_debug.h"
 #include "logger.h"
@@ -8,14 +10,18 @@
 
 #include "akinator.h"
 
-int sPrintInt(char *buffer, const void* a);
-int sPrintDouble(char *buffer, const void* a);
+
+int sPrintInt(void *buffer, const void* a);
+int sPrintDouble(void *buffer, const void* a);
 void binTreeTest();
 
 int main() {
+    setlocale(LC_ALL, "ru_RU.UTF-8");
     logOpen("log.txt", L_HTML_MODE);
     setLogLevel(L_EXTRA);
+    logDisableBuffering();
 
+    //binTreeTest();
     Akinator_t akinator = {0};
     akinatorInit("dataBase.tdf", &akinator);
     akinatorPlay(&akinator);
@@ -26,11 +32,11 @@ int main() {
 }
 
 
-int sPrintInt(char *buffer, const void* a) {
-    return sprintf(buffer, "%d", *(const int *)a);
+int sPrintInt(void *buffer, const void* a) {
+    return swprintf((wchar_t*)buffer, MAX_LABEL_LEN, L"%d", *(const int *)a);
 }
-int sPrintDouble(char *buffer, const void* a) {
-    return sprintf(buffer, "%.3g", *(const double *)a);
+int sPrintDouble(void *buffer, const void* a) {
+    return swprintf((wchar_t*)buffer, MAX_LABEL_LEN, L"%.3g", *(const double *)a);
 }
 int cmpDouble(const void *a, const void *b) {
     double da = *(const double *)a,

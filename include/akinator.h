@@ -3,7 +3,7 @@
 
 const size_t MAX_LABEL_LEN = 128;
 const size_t AKINATOR_BUFFER_SIZE = 256;
-const char *AKINATOR_DATA_DIR = "data";
+const char * const AKINATOR_DATA_DIR = "data";
 
 enum akinatorStatus {
     AKINATOR_SUCCESS,

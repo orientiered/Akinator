@@ -86,14 +86,14 @@ enum treeStatus treeDump(const node_t *tree, printFunction_t sPrint) {
 
     char buffer[128] = "";
     sprintf(buffer, "logs/dot/tree_%zu.dot", dumpCounter);
-    FILE *dotFile = fopen(buffer, "w");
-    fprintf(dotFile, "digraph {\n");
+    FILE *dotFile = fopen(buffer, "wb");
+    fwprintf(dotFile, L"digraph {\n");
 
     cList_t toVisit = {0};
     listCtor(&toVisit, sizeof(node_t *));
     listPushFront(&toVisit, &tree);
 
-    wchar_t valueBuffer[128] = "";
+    wchar_t valueBuffer[128] = L"";
     while (toVisit.size > 0) {
         node_t *current = *(node_t **)listGet(&toVisit, listFront(&toVisit));
         listPopFront(&toVisit);
@@ -104,16 +104,15 @@ enum treeStatus treeDump(const node_t *tree, printFunction_t sPrint) {
             listPushFront(&toVisit, &(current->left));
 
         sPrint(valueBuffer, current->data);
-        fwprintf(dotFile, "\tnode%p [shape = Mrecord, label = \"{node[%p] | parent[%p] | value = %s | { <left>left[%p] | <right>right[%p] }}\"];\n",
+        int errCOde = fwprintf(dotFile, L"\tnode%p [shape = Mrecord, label = \"{node[%p] | parent[%p] | value = %ls | { <left>left[%p] | <right>right[%p] }}\"];\n",
                           current,                           current,  current->parent,  valueBuffer, current->left, current->right);
-
         if (current->left)
-            fprintf(dotFile, "\tnode%p:<left> -> node%p;\n", current, current->left);
+            fwprintf(dotFile, L"\tnode%p:<left> -> node%p;\n", current, current->left);
         if (current->right)
-            fprintf(dotFile, "\tnode%p:<right> -> node%p;\n", current, current->right);
+            fwprintf(dotFile, L"\tnode%p:<right> -> node%p;\n", current, current->right);
     }
     listDtor(&toVisit);
-    fprintf(dotFile, "}\n");
+    fwprintf(dotFile, L"}\n");
     fclose(dotFile);
 
     sprintf(buffer, "dot logs/dot/tree_%zu.dot -Tsvg -o logs/img/tree_dump_%zu.svg", dumpCounter, dumpCounter);

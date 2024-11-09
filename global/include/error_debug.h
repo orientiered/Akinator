@@ -4,6 +4,7 @@
 #ifndef ERROR_DEBUG_H
 #define ERROR_DEBUG_H
 
+#include "errno.h"
 #include "colors.h"
 
 
