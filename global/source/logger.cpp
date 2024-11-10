@@ -4,6 +4,7 @@
 #include <time.h>
 #include <stdarg.h>
 #include <wchar.h>
+#include <locale.h>
 
 #include "logger.h"
 
@@ -66,6 +67,7 @@ static enum status constructFileName(const char *fileName) {
 
 enum status logOpen(const char *fileName, enum LogMode mode) {
     system("mkdir -p logs");
+    setlocale(LC_ALL, "ru_RU.UTF-8");
 
     logger.logMode = mode;
     if ((mode != L_TXT_MODE) && (mode != L_HTML_MODE)) {

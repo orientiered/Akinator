@@ -1,15 +1,19 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <wchar.h>
 #include <locale.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #include "logger.h"
+#include "utils.h"
 
 #include "tree.h"
 #include "akinator.h"
+#include "tts.h"
 
 static node_t *NODE_null = (node_t *) size_t(-1);
 
@@ -83,6 +87,10 @@ enum akinatorStatus akinatorInit(const char *dataBaseFile, Akinator_t *akinator)
     logPrint(L_DEBUG, 0, "Initializing akinator\n"
                          "Trying to read dataBase from '%s'\n", buffer);
 
+    char *fileName = (char *) calloc(strlen(buffer) + 1, sizeof(char));
+    strcpy(fileName, buffer);
+    akinator->databaseFile = fileName;
+
     struct stat stBuf = {0};
     if (stat(buffer, &stBuf) != 0) {
         logPrint(L_ZERO, 1, "Failed to read dataBase from '%s'\n"
@@ -106,11 +114,167 @@ enum akinatorStatus akinatorInit(const char *dataBaseFile, Akinator_t *akinator)
     return AKINATOR_SUCCESS;
 }
 
+static bool matchAnyCaseString(const wchar_t *const word, const wchar_t * const *words, size_t wordsLen) {
+    for (size_t idx = 0; idx < wordsLen; idx++) {
+        if (wcscasecmp(word, words[idx]) == 0)
+            return true;
+    }
+    return false;
+}
+
+static enum responseStatus getPlayerResponse(wchar_t *ansBuffer, enum requestType type) {
+    enum responseStatus playerAnswer = RESPONSE_NO;
+    while (playerAnswer == RESPONSE_BAD_INPUT || playerAnswer == RESPONSE_NO) {
+        if (playerAnswer == RESPONSE_BAD_INPUT) {
+            ttsPrintf(BAD_INPUT_FORMAT_STR);
+            ttsFlush();
+        }
+
+        fwscanf(stdin, L" %l[^\n]", ansBuffer);
+
+        switch(type) {
+        case REQUEST_YES_NO:
+            if (matchAnyCaseString(ansBuffer, YES_STRINGS, ARRAY_SIZE(YES_STRINGS)))
+                playerAnswer = RESPONSE_SUCCESS_YES;
+            else if (matchAnyCaseString(ansBuffer, NO_STRINGS, ARRAY_SIZE(NO_STRINGS)))
+                playerAnswer = RESPONSE_SUCCESS_NO;
+            else playerAnswer = RESPONSE_BAD_INPUT;
+            break;
+        case REQUEST_STRING:
+            //TODO: check if 'no' is in string
+            playerAnswer = RESPONSE_SUCCESS_STRING;
+            break;
+        default:
+            //MAYBE NOT 1
+            exit(1);
+            break;
+        }
+    }
+    return playerAnswer;
+}
+
+static akinatorStatus akinatorWelcomeMessage() {
+    ttsPrintf(WELCOME_MSG_FORMAT_STR);
+    ttsFlush();
+    wprintf(AGREEMENTS_FORMAT_STR);
+    for (size_t idx = 0; idx < sizeof(YES_STRINGS) / sizeof(wchar_t *); idx++)
+        wprintf(L"%ls ", YES_STRINGS[idx]);
+    wprintf(L"\n");
+
+    wprintf(DISAGREEMENTS_FORMAT_STR);
+    for (size_t idx = 0; idx < sizeof(NO_STRINGS) / sizeof(wchar_t *); idx++)
+        wprintf(L"%ls ", NO_STRINGS[idx]);
+    wprintf(L"\n");
+
+    return AKINATOR_SUCCESS;
+}
+
 enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
+    wchar_t ansBuffer[AKINATOR_BUFFER_SIZE] = L"";
+    akinatorWelcomeMessage();
+
+    bool run = true;
+    enum responseStatus playerAnswer = RESPONSE_BAD_INPUT;
+
+    while (run) {
+        ttsPrintf(QUESTION_FORMAT_STR, akinator->current->data);
+        ttsFlush();
+        playerAnswer = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
+
+        if (playerAnswer == RESPONSE_BAD_INPUT) {
+            //TODO: handle this case (it is not possible)
+            return AKINATOR_ERROR;
+        }
+
+        if (akinator->current->left) {
+            if (playerAnswer == RESPONSE_SUCCESS_YES)
+                akinator->current = akinator->current->left;
+            else if (playerAnswer == RESPONSE_SUCCESS_NO)
+                akinator->current = akinator->current->right;
+        } else {
+            if (playerAnswer == RESPONSE_SUCCESS_YES) {
+                ttsPrintf(CORRECT_GUESS_FORMAT_STR);
+            } else if (playerAnswer == RESPONSE_SUCCESS_NO) {
+                ttsPrintf(ADD_OBJECT_FORMAT_STR);
+                ttsFlush();
+                playerAnswer = getPlayerResponse(ansBuffer, REQUEST_STRING);
+                treeAdd(akinator->current, ansBuffer, 0);
+                treeAdd(akinator->current, akinator->current->data, 1);
+
+                ttsPrintf(OBJECT_DIFFER_FORMAT_STR, ansBuffer, akinator->current->data);
+                ttsFlush();
+                playerAnswer = getPlayerResponse(ansBuffer, REQUEST_STRING);
+                wcscpy((wchar_t*)(akinator->current->data), ansBuffer);
+            }
+
+            ttsPrintf(PLAY_AGAIN_FORMAT_STR);
+            ttsFlush();
+            playerAnswer = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
+            akinator->current = akinator->root;
+            run = (playerAnswer == RESPONSE_SUCCESS_YES) ? true : false;
+        }
+    }
+    return AKINATOR_SUCCESS;
+}
+
+static enum akinatorStatus recursiveSaveDataBase(FILE *file, node_t *node, unsigned tabulation) {
+    MY_ASSERT(file, exit(1));
+
+    for (unsigned i = 0; i < tabulation; i++) fputwc(L'\t', file);
+    if (!node) {
+        fwprintf(file, L"\"%ls\";\n", NULL_NODE_STRING);
+        return AKINATOR_SUCCESS;
+    }
+
+    fwprintf(file, L"\"%ls\"", (wchar_t *)node->data);
+    if (!node->left && !node->right) {
+        fwprintf(file, L";\n");
+        return AKINATOR_SUCCESS;
+    }
+
+    if (node->left || node->right) fwprintf(file, L":\n");
+
+    recursiveSaveDataBase(file, node->left,  tabulation+1);
+    recursiveSaveDataBase(file, node->right, tabulation+1);
+
+    return AKINATOR_SUCCESS;
+}
+
+static enum akinatorStatus akinatorSaveDataBase(Akinator_t *akinator) {
+    MY_ASSERT(akinator, exit(1));
+
+    if (!akinator->databaseFile) {
+        strcpy(akinator->databaseFile, defaultDatabaseFile);
+        logPrint(L_ZERO, 1, "[Error]No output file name, using default name\n");
+
+    }
+    FILE *database = fopen(akinator->databaseFile, "wb");
+    if (!database) {
+        logPrint(L_ZERO, 1, "[Error]Failed to open database file '%s'\n", akinator->databaseFile);
+        return AKINATOR_ERROR;
+    }
+
+    if (recursiveSaveDataBase(database, akinator->root, 0) != AKINATOR_SUCCESS) {
+        logPrint(L_ZERO, 1, "[Error]Failed to save database\n");
+        return AKINATOR_ERROR;
+    }
     return AKINATOR_SUCCESS;
 }
 
 enum akinatorStatus akinatorDelete(Akinator_t *akinator) {
+    treeDump(akinator->root, sPrint);
+    wprintf(SAVE_DATA_FORMAT_STR);
+    wchar_t ansBuffer[MAX_LABEL_LEN] = L"";
+
+    enum responseStatus playerAnswer = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
+    if (playerAnswer == RESPONSE_SUCCESS_YES) {
+        if (akinatorSaveDataBase(akinator) != AKINATOR_SUCCESS)
+            return AKINATOR_ERROR;
+    }
+
+    free(akinator->databaseFile);
+    treeDtor(akinator->root);
+
     return AKINATOR_SUCCESS;
 }
 

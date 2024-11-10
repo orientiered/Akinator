@@ -4,3 +4,4 @@ logs/
 *.out
 *.pt
 *.wav
+tts/

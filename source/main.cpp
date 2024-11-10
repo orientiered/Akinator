@@ -9,18 +9,17 @@
 #include "tree.h"
 
 #include "akinator.h"
-
+#include "tts.h"
 
 int sPrintInt(void *buffer, const void* a);
 int sPrintDouble(void *buffer, const void* a);
 void binTreeTest();
 
 int main() {
-    setlocale(LC_ALL, "ru_RU.UTF-8");
     logOpen("log.txt", L_HTML_MODE);
     setLogLevel(L_EXTRA);
     logDisableBuffering();
-
+    // ttsSpeak(L"Привет, это тест озвучки из программы на Си\n");
     //binTreeTest();
     Akinator_t akinator = {0};
     akinatorInit("dataBase.tdf", &akinator);
