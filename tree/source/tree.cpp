@@ -184,24 +184,34 @@ node_t *nodeCtor(const void *elem, node_t *parent, size_t elemSize) {
 node_t *treeFind(node_t *tree, const void *elem, cmpFunction_t cmp) {
     MY_ASSERT(tree, abort());
     MY_ASSERT(elem, abort());
-    TREE_NODE_ASSERT(tree, cmp);
+    TREE_NODE_ASSERT(tree, NULL);
+
+    if (cmp == NULL && memcmp(tree->data, elem, tree->elemSize) == 0)
+        return tree;
+    else if (cmp(tree->data, elem) == 0) return tree;
 
     node_t *result = NULL;
+    if (tree->left)
+        result = treeFind(tree->left, elem, cmp);
+    if (result) return result;
+
+    if (tree->right)
+        result = treeFind(tree->right, elem, cmp);
+
+    return result;
+}
+
+node_t *treeSortFind(node_t *tree, const void *elem, cmpFunction_t cmp) {
+    MY_ASSERT(tree, abort());
+    MY_ASSERT(elem, abort());
+    TREE_NODE_ASSERT(tree, cmp);
+
     if (cmp == NULL) {
-        // search through all elements
-        if (cmp(tree->data, elem) == 0) return tree;
-
-        if (tree->left)
-            result = treeFind(tree->left, elem, cmp);
-        if (result) return result;
-
-        if (tree->right)
-            result = treeFind(tree->right, elem, cmp);
-
-        return result;
+        logPrint(L_ZERO, 1, "Tree sort find can't be used without cmp function\n");
+        return NULL;
     }
 
-    result = tree;
+    node_t *result = tree;
     int cmpResult = 0;
     do {
         cmpResult = cmp(elem, result->data);
@@ -212,4 +222,3 @@ node_t *treeFind(node_t *tree, const void *elem, cmpFunction_t cmp) {
     } while (cmpResult != 0 && result != NULL);
     return result;
 }
-

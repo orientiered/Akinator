@@ -20,6 +20,9 @@ const wchar_t * const BAD_INPUT_FORMAT_STR      = L"Какой-то неровн
 const wchar_t * const CORRECT_GUESS_FORMAT_STR  = L"Очев\n";
 const wchar_t * const PLAY_AGAIN_FORMAT_STR     = L"Хотите сыграть ещё? (Y/n)\n";
 const wchar_t * const SAVE_DATA_FORMAT_STR      = L"Сохранить прогресс? (Y/n)\n";
+
+const wchar_t * const GIVE_DEFINITION_SCAN_STR  = L" Шо такое \"%l[^\n\"]\"";
+const wchar_t * const NO_LABEL_FORMAT_STR       = L"Я не знаю, что такое %ls\n";
 enum requestType {
     REQUEST_YES_NO,
     REQUEST_STRING,
@@ -29,6 +32,7 @@ enum responseStatus {
     RESPONSE_SUCCESS_YES,
     RESPONSE_SUCCESS_NO,
     RESPONSE_SUCCESS_STRING,
+    RESPONSE_SUCCESS_DEFINITION,
     RESPONSE_BAD_INPUT,
     RESPONSE_NO
 };

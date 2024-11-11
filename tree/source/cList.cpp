@@ -322,7 +322,7 @@ listIterator_t listInsertBefore(cList_t *list, listIterator_t iter, const void *
 
 void *listGet(cList_t *list, listIterator_t iter) {
     MY_ASSERT(list, abort());
-    MY_ASSERT(iter, abort());
+    // MY_ASSERT(iter, abort());
     LIST_CUSTOM_ASSERT(list, NULL);
 
     if (checkIfInvalidIterator(list, iter)) {

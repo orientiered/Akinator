@@ -11,6 +11,7 @@
 #include "logger.h"
 #include "utils.h"
 
+#include "cList.h"
 #include "tree.h"
 #include "akinator.h"
 #include "tts.h"
@@ -19,6 +20,9 @@ static node_t *NODE_null = (node_t *) size_t(-1);
 
 static int sPrint(void *buffer, const void *a) {
     return swprintf((wchar_t*)buffer, MAX_LABEL_LEN, (const wchar_t*) a);
+}
+static int akinatorStrCmp(const void *a, const void *b) {
+    return wcscasecmp((const wchar_t *) a, (const wchar_t *) b);
 }
 
 static node_t *recursiveReadDataBase(FILE *dataBase, node_t *parent) {
@@ -130,6 +134,10 @@ static enum responseStatus getPlayerResponse(wchar_t *ansBuffer, enum requestTyp
             ttsFlush();
         }
 
+        if (fwscanf(stdin, GIVE_DEFINITION_SCAN_STR, ansBuffer) == 1) {
+            return RESPONSE_SUCCESS_DEFINITION;
+        }
+
         fwscanf(stdin, L" %l[^\n]", ansBuffer);
 
         switch(type) {
@@ -169,6 +177,46 @@ static akinatorStatus akinatorWelcomeMessage() {
     return AKINATOR_SUCCESS;
 }
 
+static akinatorStatus akinatorGiveDefinition(Akinator_t *akinator, const wchar_t *ansBuffer) {
+    node_t *label = treeFind(akinator->root, ansBuffer, akinatorStrCmp);
+    if (!label) {
+        ttsPrintf(NO_LABEL_FORMAT_STR, ansBuffer);
+        ttsFlush();
+        return AKINATOR_SUCCESS;
+    }
+    const size_t MAX_DEFINITION_DEPTH = 64;
+    //TODO: maybe do it other way
+    wchar_t *positiveProperties[MAX_DEFINITION_DEPTH] = {0};
+    size_t positiveIdx = 0;
+    wchar_t *negativeProperties[MAX_DEFINITION_DEPTH] = {0};
+    size_t negativeIdx = 0;
+
+    node_t *current = label->parent,
+           *prev    = label;
+    while (current != NULL) {
+        if (current->right == prev)
+            negativeProperties[negativeIdx++] = (wchar_t *) current->data;
+        else
+            positiveProperties[positiveIdx++] = (wchar_t *) current->data;
+
+        prev = current;
+        current = current->parent;
+    }
+    // positiveProperties[positiveIdx++] = (wchar_t *) current->data;
+
+    ttsPrintf(L"%ls это ", label->data);
+
+    for (size_t idx = 0; idx < positiveIdx; idx++) {
+        ttsPrintf(L"%ls, ", positiveProperties[idx]);
+    }
+    for (size_t idx = 0; idx < negativeIdx; idx++) {
+        ttsPrintf(L"не %ls, ", negativeProperties[idx]);
+    }
+    ttsPrintf(L"\n");
+    ttsFlush();
+    return AKINATOR_SUCCESS;
+}
+
 enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
     wchar_t ansBuffer[AKINATOR_BUFFER_SIZE] = L"";
     akinatorWelcomeMessage();
@@ -181,9 +229,9 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
         ttsFlush();
         playerAnswer = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
 
-        if (playerAnswer == RESPONSE_BAD_INPUT) {
-            //TODO: handle this case (it is not possible)
-            return AKINATOR_ERROR;
+        if (playerAnswer == RESPONSE_SUCCESS_DEFINITION) {
+            akinatorGiveDefinition(akinator, ansBuffer);
+            continue;
         }
 
         if (akinator->current->left) {
