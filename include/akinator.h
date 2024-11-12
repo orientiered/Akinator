@@ -56,5 +56,6 @@ typedef struct {
 enum akinatorStatus akinatorInit(const char *dataBaseFile, Akinator_t *akinator);
 enum akinatorStatus akinatorPlay(Akinator_t *akinator);
 enum akinatorStatus akinatorDelete(Akinator_t *akinator);
+enum akinatorStatus akinatorDump(Akinator_t *akinator);
 
 #endif

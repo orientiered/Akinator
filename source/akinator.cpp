@@ -388,6 +388,7 @@ enum akinatorStatus akinatorDelete(Akinator_t *akinator) {
             return AKINATOR_ERROR;
     }
 
+    akinatorDump(akinator);
     free(akinator->databaseFile);
     treeDtor(akinator->root);
 
@@ -396,6 +397,58 @@ enum akinatorStatus akinatorDelete(Akinator_t *akinator) {
 
 enum akinatorStatus akinatorDump(Akinator_t *akinator) {
     MY_ASSERT(akinator, exit(0));
+    static size_t dumpCounter = 0;
+    dumpCounter++;
+    system("mkdir -p logs/dot logs/img");
+    const char *QUESTION_YES_COLOR = "#10EE88";
+    const char *QUESTION_NO_COLOR  = "#EE1088";
+    const char *LEAF_YES_COLOR     = "#10EE10";
+    const char *LEAF_NO_COLOR      = "#EE1010";
+
+    char buffer[128] = "";
+    sprintf(buffer, "logs/dot/akinator_%zu.dot", dumpCounter);
+    FILE *dotFile = fopen(buffer, "wb");
+    fwprintf(dotFile, L"digraph {\n"
+                      L"graph [splines=line]\n");
+
+    cList_t toVisit = {0};
+    listCtor(&toVisit, sizeof(node_t *), NULL);
+    listPushFront(&toVisit, &akinator->root);
+
+    wchar_t valueBuffer[128] = L"";
+    while (toVisit.size > 0) {
+        node_t *current = *(node_t **)listGet(&toVisit, listFront(&toVisit));
+        listPopFront(&toVisit);
+
+        if (current->right)
+            listPushFront(&toVisit, &(current->right));
+        if (current->left)
+            listPushFront(&toVisit, &(current->left));
+        bool leaf      = (current->right || current->left);
+        bool yes_node  = (current->parent == NULL || current->parent->left == current);
+
+        const char *color = ( leaf  &&  yes_node) ? LEAF_YES_COLOR :
+                            ( leaf  && !yes_node) ? LEAF_NO_COLOR  :
+                            (!leaf  &&  yes_node) ? QUESTION_YES_COLOR :
+                            QUESTION_NO_COLOR;
+
+        akinatorSWPrint(valueBuffer, current->data);
+        fwprintf(dotFile, L"\tnode%p [shape = rectangle, style=filled,label = \"%ls\", fillcolor = \"%s\"];\n",
+                                current,                        valueBuffer,       color);
+
+        if (current->left)
+            fwprintf(dotFile, L"\tnode%p -> node%p;\n", current, current->left);
+        if (current->right)
+            fwprintf(dotFile, L"\tnode%p -> node%p;\n", current, current->right);
+    }
+    listDtor(&toVisit);
+    fwprintf(dotFile, L"}\n");
+    fclose(dotFile);
+
+    sprintf(buffer, "dot logs/dot/akinator_%zu.dot -Tsvg -o logs/img/akinator_dump_%zu.svg", dumpCounter, dumpCounter);
+    system(buffer);
+
+    logPrint(L_ZERO, 0, "<img src=\"img/akinator_dump_%zu.svg\" width=76%%>\n<hr>\n", dumpCounter);
     return AKINATOR_SUCCESS;
 }
 
