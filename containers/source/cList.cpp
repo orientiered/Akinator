@@ -10,12 +10,12 @@
 const size_t INTERNAL_BUFFER_SIZE = 100;
 
 static bool checkIfInvalidIterator(cList_t *list, listIterator_t iter) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     return (iter < 0 || iter > list->reserved);
 }
 
 static enum listStatus listRealloc(cList_t *list) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     LIST_ASSERT(list);
     logPrint(L_DEBUG, 0, "Reallocating list [%p]: %d -> %d\n", list, list->reserved, list->reserved * 2);
 
@@ -65,12 +65,13 @@ static enum listStatus listRealloc(cList_t *list) {
     return LIST_SUCCESS;
 }
 
-enum listStatus listCtor(cList_t *list, size_t elemSize) {
-    MY_ASSERT(list, abort());
+enum listStatus listCtor(cList_t *list, size_t elemSize, listPrintFunction_t sPrint) {
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     logPrint(L_DEBUG, 0, "Constructing list [%p]\n", list);
 
     list->size     = 0;
     list->reserved = MIN_LIST_RESERVED;
+    list->sPrint = sPrint;
 
     list->elemSize = elemSize;
     list->data     = calloc(MIN_LIST_RESERVED + 1, elemSize);
@@ -102,7 +103,7 @@ enum listStatus listCtor(cList_t *list, size_t elemSize) {
 }
 
 enum listStatus listDtor(cList_t *list) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     LIST_ASSERT(list);
     logPrint(L_DEBUG, 0, "Destructing list [%p]\n", list);
     free(list->data); list->data = NULL;
@@ -114,7 +115,7 @@ enum listStatus listDtor(cList_t *list) {
 }
 
 enum listStatus listClear(cList_t *list) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     LIST_ASSERT(list);
     logPrint(L_DEBUG, 0, "Clearing list [%p]\n", list);
 
@@ -136,22 +137,22 @@ enum listStatus listClear(cList_t *list) {
 }
 
 listIterator_t  listFront(cList_t *list) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     return (listIterator_t) list->next[0];
 }
 
 listIterator_t  listBack(cList_t *list) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     return (listIterator_t) list->prev[0];
 }
 
 listIterator_t  listNext(cList_t *list, listIterator_t iter) {
-    MY_ASSERT(list, abort());
-    MY_ASSERT(iter, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
+    MY_ASSERT(iter, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     if (checkIfInvalidIterator(list, iter)) {
@@ -165,8 +166,8 @@ listIterator_t  listNext(cList_t *list, listIterator_t iter) {
 }
 
 listIterator_t  listPrev(cList_t *list, listIterator_t iter) {
-    MY_ASSERT(list, abort());
-    MY_ASSERT(iter, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
+    MY_ASSERT(iter, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     if (checkIfInvalidIterator(list, iter)) {
@@ -180,8 +181,8 @@ listIterator_t  listPrev(cList_t *list, listIterator_t iter) {
 }
 
 listIterator_t  listPushFront(cList_t *list, const void *elem) {
-    MY_ASSERT(list, abort());
-    MY_ASSERT(elem, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
+    MY_ASSERT(elem, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     logPrint(L_EXTRA, 0, "Pushing element[%p] to front of list[%p]\n", elem, list);
@@ -192,8 +193,8 @@ listIterator_t  listPushFront(cList_t *list, const void *elem) {
 }
 
 listIterator_t  listPushBack(cList_t *list, const void *elem) {
-    MY_ASSERT(list, abort());
-    MY_ASSERT(elem, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
+    MY_ASSERT(elem, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     logPrint(L_EXTRA, 0, "Pushing element[%p] to back of list[%p]\n", elem, list);
@@ -204,7 +205,7 @@ listIterator_t  listPushBack(cList_t *list, const void *elem) {
 }
 
 listIterator_t listPopFront(cList_t *list) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     logPrint(L_EXTRA, 0, "Popping element at front of list[%p]\n", list);
@@ -217,7 +218,7 @@ listIterator_t listPopFront(cList_t *list) {
 }
 
 listIterator_t listPopBack(cList_t *list) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     logPrint(L_EXTRA, 0, "Popping element at back of list[%p]\n", list);
@@ -230,7 +231,7 @@ listIterator_t listPopBack(cList_t *list) {
 }
 
 enum listStatus listRemove(cList_t *list, listIterator_t iter) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     LIST_ASSERT(list);
 
     if (checkIfInvalidIterator(list, iter)) {
@@ -266,8 +267,8 @@ enum listStatus listRemove(cList_t *list, listIterator_t iter) {
 
 
 listIterator_t listFind(cList_t *list, const void *elem) {
-    MY_ASSERT(list, abort());
-    MY_ASSERT(elem, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
+    MY_ASSERT(elem, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     listIterator_t iter = list->next[0];
@@ -279,8 +280,8 @@ listIterator_t listFind(cList_t *list, const void *elem) {
 
 /// @brief insert After iterator, return iterator to inserted elem
 listIterator_t listInsertAfter(cList_t *list, listIterator_t iter, const void *elem) {
-    MY_ASSERT(list, abort());
-    MY_ASSERT(elem, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
+    MY_ASSERT(elem, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     logPrint(L_EXTRA, 0, "Inserting elem[%p] in list[%p] after [%d] iterator\n", elem, list, iter);
@@ -313,16 +314,16 @@ listIterator_t listInsertAfter(cList_t *list, listIterator_t iter, const void *e
 
 /// @brief insert Before iterator, return iterator to inserted elem
 listIterator_t listInsertBefore(cList_t *list, listIterator_t iter, const void *elem) {
-    MY_ASSERT(list, abort());
-    MY_ASSERT(elem, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
+    MY_ASSERT(elem, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, INVALID_LIST_IT);
 
     return listInsertAfter(list, list->prev[iter], elem);
 }
 
 void *listGet(cList_t *list, listIterator_t iter) {
-    MY_ASSERT(list, abort());
-    // MY_ASSERT(iter, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
+    MY_ASSERT(iter, exit(LIST_NULL_PTR_ERROR));
     LIST_CUSTOM_ASSERT(list, NULL);
 
     if (checkIfInvalidIterator(list, iter)) {
@@ -341,7 +342,7 @@ void *listGet(cList_t *list, listIterator_t iter) {
 }
 
 enum listStatus listVerify(cList_t *list) {
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     /* CHECKING BASIC LOGIC*/
     if (list->reserved < 0) {
         logPrint(L_ZERO, 1, "Negative reserved elements in list[%p]: %ld\n", list, list->reserved);
@@ -406,15 +407,21 @@ enum listStatus listVerify(cList_t *list) {
         return LIST_FREE_ERROR;
     }
 
-    /*CHECKING NEXT, FREE AND PREV ON LINKING ERRORS (FULL ELEMENT COVERAGE AND ABSENCE OF CYCLES)*/
+    /*CHECKING NEXT, FREE AND PREV ON LINKING ERRORS (FULL ELEMENT COVERAGE AND ABSENCE OF LOOPS)*/
     int32_t visitedCounter = 0;
     listIterator_t iter = head;
-    //list->reserved + 5 to be sure that verifier has found cycle
+    //list->reserved + 5 to be sure that verifier has found loop
     for (;iter != NULL_LIST_IT && visitedCounter < list->reserved + 5;iter = list->next[iter]) {
+        if (list->next[iter] < 0 || list->next[iter] > list->reserved) {
+            logPrint(L_ZERO, 1, "Bad iterator in next sequence in list [%p]:\n"
+                                "\tnext[iter] = %d\n"
+                                "\tmaxIter = capacity = %d\n",
+                                list, list->next[iter], list->reserved);
+            return LIST_NEXT_LINK_ERROR;
+        }
         if (list->prev[list->next[iter]] != iter) {
             logPrint(L_ZERO, 1, "prev[next[iter]] != iter in list [%p]:\n"
-                                "\titer = %d\n"
-                                "\tnext[iter] = %d\n"
+                                "\tnext[%d] = %d\n"
                                 "\tprev[next[iter]] = %d != %d\n",
                                 list, iter, list->next[iter], list->prev[list->next[iter]], iter);
             return LIST_NEXT_LINK_ERROR;
@@ -422,7 +429,7 @@ enum listStatus listVerify(cList_t *list) {
         visitedCounter++;
     }
     if (visitedCounter > list->reserved) {
-        logPrint(L_ZERO, 1, "Found cycle in list [%p] in next array\n", list);
+        logPrint(L_ZERO, 1, "Found loop in list [%p] in next array\n", list);
         return LIST_NEXT_LINK_ERROR;
     } else if (visitedCounter != list->size) {
         logPrint(L_ZERO, 1, "Wrong linking in list [%p] in next array\n", list);
@@ -432,7 +439,14 @@ enum listStatus listVerify(cList_t *list) {
     /*checking free*/
     iter = list->free;
     for (;iter != NULL_LIST_IT && visitedCounter < list->reserved + 5;iter = list->next[iter]) {
-        //logPrint(L_EXTRA, 0, "it = %d\n", iter);
+        if (list->next[iter] < 0 || list->next[iter] > list->reserved) {
+            logPrint(L_ZERO, 1, "Bad iterator in free sequence in list [%p]:\n"
+                                "\tnext[%d] = %d\n"
+                                "\tmaxIter = capacity = %d\n",
+                                list, iter, list->next[iter], list->reserved);
+            return LIST_NEXT_LINK_ERROR;
+        }
+
         if (list->prev[iter] != INVALID_LIST_IT) {
             logPrint(L_ZERO, 1, "Found previous element for element from free sequence in list [%p]\n", list);
             return LIST_FREE_LINK_ERROR;
@@ -441,7 +455,7 @@ enum listStatus listVerify(cList_t *list) {
     }
 
     if (visitedCounter > list->reserved) {
-        logPrint(L_ZERO, 1, "Found cycle in list [%p] in free(next) array\n", list);
+        logPrint(L_ZERO, 1, "Found loop in list [%p] in free(next) array\n", list);
         return LIST_FREE_LINK_ERROR;
     } else if (visitedCounter != list->reserved) {
         logPrint(L_ZERO, 1, "Wrong linking in list [%p] in free(next) array\n", list);
@@ -452,10 +466,17 @@ enum listStatus listVerify(cList_t *list) {
     iter = tale;
     visitedCounter = 0;
     for (; iter != NULL_LIST_IT && visitedCounter < list->reserved + 5; iter = list->prev[iter]) {
+        if (list->prev[iter] < 0 || list->prev[iter] > list->reserved) {
+            logPrint(L_ZERO, 1, "Bad iterator in free sequence in list [%p]:\n"
+                                "\tprev[iter] = %d\n"
+                                "\tmaxIter = capacity = %d\n",
+                                list, list->prev[iter], list->reserved);
+            return LIST_NEXT_LINK_ERROR;
+        }
         visitedCounter++;
     }
     if (visitedCounter > list->reserved) {
-        logPrint(L_ZERO, 1, "Found cycle in list [%p] in prev array\n", list);
+        logPrint(L_ZERO, 1, "Found loop in list [%p] in prev array\n", list);
         return LIST_PREV_LINK_ERROR;
     } else if (visitedCounter != list->size) {
         logPrint(L_ZERO, 1, "Wrong linking in list [%p] in prev array\n", list);
@@ -465,60 +486,109 @@ enum listStatus listVerify(cList_t *list) {
     return LIST_SUCCESS;
 }
 
-enum listStatus listDump(cList_t *list) {
+enum listStatus listDump(cList_t *list, const char *callMessage) {
+    const char *invColor        = "#00000000";
+    const char *freeColor       = "#AAAAAA";
+    const char *nextEdgeColor   = "#3751AE";
+    const char *prevEdgeColor   = "#C3375A";
+    const char *headColor       = "#6B9A6E";
+    const char *taleColor       = "#FF9E7B";
+    const char *goodEdgeColor   = "#2BA36C";
+    const char *headerColor     = "#C2B3A3";
+    const char *nullElemColor   = "#93AB9D";
+    const char *invalidElemColor= "#FD292F";
+
     static size_t imgNumber = 0;
     char buffer[INTERNAL_BUFFER_SIZE] = "";
 
-    MY_ASSERT(list, abort());
+    MY_ASSERT(list, exit(LIST_NULL_PTR_ERROR));
     if (getLogLevel() < L_DEBUG)
         return LIST_SUCCESS;
 
-    logPrintColor(L_ZERO, "#FF0000", "#CCCCCC", "-------cList_t [%p] dump--------\n", list);
-
+    logPrintColor(L_ZERO, "#FF0000", "#CCCCCC", "<h2>-------cList_t [%p] dump--------</h2>\n", list);
+    logPrint(L_ZERO, 0, "<h2><b>Called with message: %s</b></h2>\n", callMessage);
     system("mkdir -p logs/img logs/dot");
 
     sprintf(buffer, "logs/dot/listDump_%zu.dot", imgNumber);
     FILE *dotFile = fopen(buffer, "w");
-    fprintf(dotFile, "digraph {\n");
-    fprintf(dotFile, "\trankdir = LR;\n");
-    fprintf(dotFile, "\tgraph [splines=ortho];\n");
-
-    fprintf(dotFile, "\tnodeHeader [shape=Mrecord, weight=10, label=\"Info | size = %d | capacity = %d\"]\n",
-            list->size, list->reserved);
+    fputs(  "digraph {\n"
+            "\trankdir = LR;\n"
+            "\tgraph [splines = ortho];\n",
+            dotFile);
 
     fprintf(dotFile, "\tnode0 [shape=Mrecord, weight=10, label=\"NULL_ELEMENT | (head) next = %d | (tale) prev = %d\"",
             list->next[0], list->prev[0]);
-    fprintf(dotFile, "\tcolor=\"#000000\"];\n");
+    fprintf(dotFile, "\tcolor=\"%s\"];\n", nullElemColor);
 
     fprintf(dotFile, "\tsubgraph cluster_Data {\n");
     fprintf(dotFile, "\t\tlabel = \"Elements\";\n");
     fprintf(dotFile, "\t\tbgcolor=\"#ccfdf9\";\n");
-    for (int32_t idx = 1; idx <= list->reserved; idx++) {
-        fprintf(dotFile, "\t\tnode%d [shape=Mrecord, style=filled,weight=10, label=\"elem #%d | next = %d | prev = %d | val = %d\",",
-                idx, idx, list->next[idx], list->prev[idx], *(int32_t *)((char *)list->data + idx * list->elemSize) );
 
-        if (list->prev[idx] == -1)
-            fprintf(dotFile, "fillcolor=\"#AAAAAA\"];\n");
+    for (int32_t idx = 1; idx <= list->reserved; idx++) {
+        if (memcmp(&LIST_POISON, (char *)list->data + idx * list->elemSize, list->elemSize) == 0)
+            sprintf(buffer, "POISON");
         else
-            fprintf(dotFile, "fillcolor=\"white\"];\n");
+            list->sPrint(buffer, (char *)list->data + idx * list->elemSize);
+
+        fprintf(dotFile, "\t\tnode%d [shape=Mrecord, style=filled,weight=10, label=\"elem #%d | next = %d | prev = %d | val = %s\",",
+                idx, idx, list->next[idx], list->prev[idx], buffer);
+
+        const char *nodeColor = (list->prev[idx] == -1) ? freeColor :
+                                (list->next[0] == idx)  ? headColor :
+                                (list->prev[0] == idx)  ? taleColor :
+                                "white";
+        fprintf(dotFile, "fillcolor=\"%s\"];\n", nodeColor);
     }
     fprintf(dotFile, "\t}\n");
 
-    for (int32_t idx = 0; idx <= list->reserved; idx++) {
-        if (idx != list->reserved)
-            fprintf(dotFile, "\tnode%d -> node%d [color=\"#00000000\"];\n", idx, idx+1);
+    fprintf(dotFile, "\tnodeHeader [fillcolor = \"%s\", shape=Mrecord, weight=10,"
+                     "label=\"Info | size = %d | capacity = %d\"]\n",
+            headerColor, list->size, list->reserved);
 
-        if (list->prev[idx] == -1)
-            fprintf(dotFile, "\tnode%d -> node%d [constraint=false,color=\"#AAAAAA\"];\n", idx, list->next[idx]);
-        else {
-            fprintf(dotFile, "\tnode%d -> node%d [constraint=false,color=\"#20EE20\"];\n", idx, list->next[idx]);
-            fprintf(dotFile, "\tnode%d -> node%d [constraint=false,color=\"#FF4420\"];\n", idx, list->prev[idx]);
-        }
+    fprintf(dotFile,
+        "\tlegend [shape=none, weight=10,"
+        "label = <"
+        "<table>"
+        "<tr><td>Color legend </td></tr>"
+        "<tr><td bgcolor=\"%s\">FREE</td></tr>"
+        "<tr><td bgcolor=\"%s\">Head</td></tr>"
+        "<tr><td bgcolor=\"%s\">Tale</td></tr>"
+        "<tr><td bgcolor=\"%s\">Bad prev</td></tr>"
+        "<tr><td bgcolor=\"%s\">Bad next</td></tr>"
+        "<tr><td bgcolor=\"%s\">Next</td></tr>"
+        "</table>>];\n", freeColor, headColor, taleColor, prevEdgeColor, nextEdgeColor, goodEdgeColor);
+
+    fprintf(dotFile, "\tlegend -> nodeHeader[color=\"%s\"];\n", invColor);
+
+    for (int32_t idx = 0; idx <= list->reserved; idx++)
+        if (idx != list->reserved)
+            fprintf(dotFile, "\tnode%d -> node%d [color=\"%s\"];\n", idx, idx+1, invColor);
+
+    for (int32_t idx = 0; idx <= list->reserved; idx++) {
+
+        const char *nextColor = (list->prev[idx] == -1) ? freeColor : goodEdgeColor;
+        const char *prevColor = NULL;
+        if (list->next[idx] > list->reserved || list->next[idx] < 0) {
+            nextColor = nextEdgeColor;
+            fprintf(dotFile, "\tnode%u [color=\"%s\", label=\"Fantom element %d\"];\n", list->next[idx], invalidElemColor, list->next[idx]);
+        } else if (list->prev[idx] != -1 && list->prev[list->next[idx]] != idx)
+            nextColor = nextEdgeColor;
+
+        if (list->prev[idx] > list->reserved || list->prev[idx] < -1) {
+            prevColor = nextEdgeColor;
+            fprintf(dotFile, "\tnode%u [color=\"%s\", label=\"Fantom element %d\"];\n", list->prev[idx], invalidElemColor, list->prev[idx]);
+        } else if (list->prev[idx] >= 0 && list->next[list->prev[idx]] != idx)
+            prevColor = prevEdgeColor;
+
+        if (nextColor)
+            fprintf(dotFile, "\tnode%d -> node%u [constraint=false,style=bold,color=\"%s\"];\n", idx, list->next[idx], nextColor);
+        if (prevColor)
+            fprintf(dotFile, "\tnode%d -> node%u [constraint=false,style=bold,color=\"%s\"];\n", idx, list->prev[idx], prevColor);
 
     }
 
     fprintf(dotFile, "\tnodeFree [shape = Mrecord, style = filled, weight = 20, label = \"Free | next = %d\"];\n"
-                     "\tnodeFree -> node%d [color = \"#111111\"];\n", list->free, list->free);
+                     "\tnodeFree -> node%d [weight = 0, color = \"%s\"];\n", list->free, list->free, freeColor);
     fprintf(dotFile, "}\n");
     fclose(dotFile);
 
@@ -526,7 +596,7 @@ enum listStatus listDump(cList_t *list) {
             imgNumber, imgNumber);
     system(buffer);
 
-    logPrint(L_ZERO, 0, "<img src=\"img/dumpImg_%zu.svg\" width=87%%>", imgNumber);
+    logPrint(L_ZERO, 0, "<object width=\"87%%\" type=\"image/svg+xml\" data=\"img/dumpImg_%zu.svg\"></object>", imgNumber);
     logPrint(L_ZERO, 0, "\n<hr>\n");
     logFlush();
 

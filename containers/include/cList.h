@@ -1,12 +1,15 @@
 #ifndef C_LIST_H
 #define C_LIST_H
 
+#define LIST_VERIFICATION 1
+
 #include <stdint.h>
 
 const int64_t LIST_POISON = 0x0FACEFABDDFAC;
 const size_t MIN_LIST_RESERVED = 4;
 const size_t SIZE_MULTIPLIER = 2;
 enum listStatus {
+    LIST_NULL_PTR_ERROR = -1,
     LIST_SUCCESS = 0,
     LIST_ERROR   = 1,
     LIST_MEMORY_ERROR,     ///< Calloc failed; Data, prev or next is NULL
@@ -23,6 +26,8 @@ enum listStatus {
 };
 
 typedef int32_t listIterator_t;
+typedef int (*listPrintFunction_t)(char *buffer, const void *a);
+
 const listIterator_t INVALID_LIST_IT = -1;
 const listIterator_t NULL_LIST_IT = 0;
 typedef struct cList {
@@ -36,10 +41,11 @@ typedef struct cList {
     int32_t *prev;
 
     int32_t free;
+    listPrintFunction_t sPrint;
 } cList_t;
 
 /// @brief Construct list with elements of elemSize
-enum listStatus listCtor(cList_t *list, size_t elemSize);
+enum listStatus listCtor(cList_t *list, size_t elemSize, listPrintFunction_t sPrint);
 
 /// @brief Descturct list
 /// WARNING: listDtor shouldn't be called on destructed or not initialized list
@@ -56,7 +62,14 @@ enum listStatus listVerify(cList_t *list);
 
 /// @brief Graphical list dump
 /// NOTE: log must be opened in L_HTML_MODE
-enum listStatus listDump(cList_t *list);
+enum listStatus listDump(cList_t *list, const char *callMessage);
+
+#define LIST_DUMP(list, msg)                                                        \
+        do {                                                                        \
+            logPrintWithTime(L_ZERO, 0, "<b>cList_t dump</b>\n"                     \
+                                "Called from %s:%d\n", __FILE__, __LINE__);         \
+            listDump(list, msg);                                                    \
+        } while(0)
 
 /// @brief Return head of list
 listIterator_t  listFront(cList_t *list);
@@ -99,26 +112,27 @@ listIterator_t listInsertBefore(cList_t *list, listIterator_t iter, const void *
 /// @return Pointer to value, NULL otherwise
 void *listGet(cList_t *list, listIterator_t iter);
 
-#ifndef NDEBUG
-# define LIST_ASSERT(list)                                                                            \
+#if defined(LIST_VERIFICATION) && !defined(NDEBUG)
+
+# define LIST_ASSERT(list)                                                                          \
     do {                                                                                            \
-        enum listStatus status = listVerify(list);                                                   \
+        enum listStatus status = listVerify(list);                                                  \
         if (status != LIST_SUCCESS) {                                                               \
-            logPrint(L_ZERO, 1, "%s:%d, %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__);            \
-            logPrint(L_ZERO, 1, "List[%p] error occurred. Error code = %d\n", list, status);         \
-            listDump(list);                                                                          \
+            logPrint(L_ZERO, 1, "<h2>%s:%d, %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__);        \
+            logPrint(L_ZERO, 1, "List[%p] error occurred. Error code = %d</h2>\n", list, status);   \
+            LIST_DUMP(list, "assert failed");                                                       \
             return status;                                                                          \
         }                                                                                           \
     } while(0)
 
 /// @brief List assert used in functions returning custom error values
-# define LIST_CUSTOM_ASSERT(list, ERR_VALUE)                                                          \
+# define LIST_CUSTOM_ASSERT(list, ERR_VALUE)                                                        \
     do {                                                                                            \
-        enum listStatus status = listVerify(list);                                                   \
+        enum listStatus status = listVerify(list);                                                  \
         if (status != LIST_SUCCESS) {                                                               \
-            logPrint(L_ZERO, 1, "%s:%d, %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__);            \
-            logPrint(L_ZERO, 1, "List[%p] error occurred. Error code = %d\n", list, status);         \
-            listDump(list);                                                                          \
+            logPrint(L_ZERO, 1, "<h2>%s:%d, %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__);        \
+            logPrint(L_ZERO, 1, "List[%p] error occurred. Error code = %d</h2>\n", list, status);   \
+            LIST_DUMP(list, "assert failed");                                                       \
             return ERR_VALUE;                                                                       \
         }                                                                                           \
     } while(0)

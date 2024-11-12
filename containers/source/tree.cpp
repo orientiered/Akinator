@@ -11,6 +11,11 @@
 #include "cList.h"
 #include "tree.h"
 
+static int nodePrintFunction(char *buffer, const void *node) {
+    const node_t *node_p = (const node_t *) node;
+    return swprintf((wchar_t *)buffer, 100, L"[%p]: parent = %p\ndata=%p\nleft=%p\nright=%p\n", node, node_p->data, node_p->left, node_p->right);
+}
+
 enum treeStatus treeCtor(node_t *tree, const void *elem, size_t elemSize) {
     MY_ASSERT(tree, abort());
     logPrint(L_EXTRA, 0, "Constructing tree[%p] with root data[%p]\n", tree, elem);
@@ -91,7 +96,7 @@ enum treeStatus treeDump(const node_t *tree, printFunction_t sPrint) {
                       L"graph [splines=line]\n");
 
     cList_t toVisit = {0};
-    listCtor(&toVisit, sizeof(node_t *));
+    listCtor(&toVisit, sizeof(node_t *), nodePrintFunction);
     listPushFront(&toVisit, &tree);
 
     wchar_t valueBuffer[128] = L"";
@@ -105,7 +110,7 @@ enum treeStatus treeDump(const node_t *tree, printFunction_t sPrint) {
             listPushFront(&toVisit, &(current->left));
 
         sPrint(valueBuffer, current->data);
-        int errCOde = fwprintf(dotFile, L"\tnode%p [shape = Mrecord, label = \"{node[%p] | parent[%p] | value = %ls | { <left>left[%p] | <right>right[%p] }}\"];\n",
+        fwprintf(dotFile, L"\tnode%p [shape = Mrecord, label = \"{node[%p] | parent[%p] | value = %ls | { <left>left[%p] | <right>right[%p] }}\"];\n",
                           current,                           current,  current->parent,  valueBuffer, current->left, current->right);
         if (current->left)
             fwprintf(dotFile, L"\tnode%p:<left> -> node%p;\n", current, current->left);

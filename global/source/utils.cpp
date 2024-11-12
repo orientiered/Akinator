@@ -76,6 +76,15 @@ void swapByByte(void* a, void* b, size_t len) {
     }
 }
 
+void reverseArray(void *array, size_t elemSize, size_t len) {
+    char *left  = (char *)array,
+         *right = (char *)array + elemSize * (len-1);
+    while (left < right) {
+        swap(left, right, elemSize);
+        left += elemSize; right -= elemSize;
+    }
+}
+
 doublePair_t runningSTD(double value, int getResult) {
     //function to calculate standard deviation of some value
     //constructed to make calculations online, so static variables

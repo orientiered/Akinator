@@ -18,7 +18,7 @@
 
 static node_t *NODE_null = (node_t *) size_t(-1);
 
-static int sPrint(void *buffer, const void *a) {
+static int akinatorSWPrint(void *buffer, const void *a) {
     return swprintf((wchar_t*)buffer, MAX_LABEL_LEN, (const wchar_t*) a);
 }
 static int akinatorStrCmp(const void *a, const void *b) {
@@ -114,7 +114,7 @@ enum akinatorStatus akinatorInit(const char *dataBaseFile, Akinator_t *akinator)
     }
     akinator->root = akinator->current = dataBaseRoot;
     fclose(dataBase);
-    if (getLogLevel() >= L_DEBUG) treeDump(dataBaseRoot, sPrint);
+    if (getLogLevel() >= L_DEBUG) treeDump(dataBaseRoot, akinatorSWPrint);
     return AKINATOR_SUCCESS;
 }
 
@@ -134,8 +134,11 @@ static enum responseStatus getPlayerResponse(wchar_t *ansBuffer, enum requestTyp
             ttsFlush();
         }
 
-        if (fwscanf(stdin, GIVE_DEFINITION_SCAN_STR, ansBuffer) == 1) {
+        size_t scannedChars = 0;
+        if (wscanf(GIVE_DEFINITION_SCAN_STR, ansBuffer) == 1) {
             return RESPONSE_SUCCESS_DEFINITION;
+        } else if (wscanf(COMPARE_SCAN_STR, &scannedChars) >= 0 && scannedChars > 0) {
+            return RESPONSE_SUCCESS_COMPARE;
         }
 
         fwscanf(stdin, L" %l[^\n]", ansBuffer);
@@ -177,6 +180,44 @@ static akinatorStatus akinatorWelcomeMessage() {
     return AKINATOR_SUCCESS;
 }
 
+typedef struct {
+    wchar_t label[MAX_LABEL_LEN];
+    bool negative;
+} objProperty_t;
+
+static objProperty_t *createDefinition(Akinator_t *akinator, node_t *object) {
+    MY_ASSERT(akinator, exit(1));
+    MY_ASSERT(object, exit(1));
+    const size_t MAX_DEFINITION_DEPTH = 64;
+    objProperty_t *definition = (objProperty_t *) calloc(MAX_DEFINITION_DEPTH, sizeof(objProperty_t));
+    size_t defIdx = 0;
+    node_t *curr = object->parent,
+           *prev = object;
+
+    while (curr != NULL) {
+        if (curr->right == prev)
+            definition[defIdx].negative = true;
+        wcscpy(definition[defIdx].label, (wchar_t *)curr->data);
+        defIdx++;
+        prev = curr; curr = curr->parent;
+    }
+
+    reverseArray(definition, sizeof(objProperty_t), defIdx);
+    return definition;
+}
+
+static akinatorStatus printDefinition(objProperty_t *definition) {
+    MY_ASSERT(definition, exit(1));
+    for (size_t idx = 0; definition[idx].label[0]; idx++) {
+        if (definition[idx].negative)
+            ttsPrintf(L"не ");
+        ttsPrintf(L"%ls", definition[idx].label);
+        if (definition[idx+1].label[0])
+            ttsPrintf(L", ");
+    }
+    return AKINATOR_SUCCESS;
+}
+
 static akinatorStatus akinatorGiveDefinition(Akinator_t *akinator, const wchar_t *ansBuffer) {
     node_t *label = treeFind(akinator->root, ansBuffer, akinatorStrCmp);
     if (!label) {
@@ -184,40 +225,64 @@ static akinatorStatus akinatorGiveDefinition(Akinator_t *akinator, const wchar_t
         ttsFlush();
         return AKINATOR_SUCCESS;
     }
-    const size_t MAX_DEFINITION_DEPTH = 64;
-    //TODO: maybe do it other way
-    wchar_t *positiveProperties[MAX_DEFINITION_DEPTH] = {0};
-    size_t positiveIdx = 0;
-    wchar_t *negativeProperties[MAX_DEFINITION_DEPTH] = {0};
-    size_t negativeIdx = 0;
 
-    node_t *current = label->parent,
-           *prev    = label;
-    while (current != NULL) {
-        if (current->right == prev)
-            negativeProperties[negativeIdx++] = (wchar_t *) current->data;
-        else
-            positiveProperties[positiveIdx++] = (wchar_t *) current->data;
-
-        prev = current;
-        current = current->parent;
-    }
-    // positiveProperties[positiveIdx++] = (wchar_t *) current->data;
-
+    objProperty_t *definition = createDefinition(akinator, label);
     ttsPrintf(L"%ls это ", label->data);
+    printDefinition(definition);
 
-    for (size_t idx = 0; idx < positiveIdx; idx++) {
-        ttsPrintf(L"%ls, ", positiveProperties[idx]);
-    }
-    for (size_t idx = 0; idx < negativeIdx; idx++) {
-        ttsPrintf(L"не %ls, ", negativeProperties[idx]);
-    }
+    free(definition);
     ttsPrintf(L"\n");
     ttsFlush();
     return AKINATOR_SUCCESS;
 }
 
+static enum akinatorStatus akinatorCompare(Akinator_t *akinator, wchar_t *ansBuffer) {
+    MY_ASSERT(akinator, exit(1));
+    MY_ASSERT(ansBuffer, exit(1));
+
+    while (getPlayerResponse(ansBuffer, REQUEST_STRING) != RESPONSE_SUCCESS_STRING)
+        ;
+    node_t *firstLabel = treeFind(akinator->root, ansBuffer, akinatorStrCmp);
+    if (!firstLabel) {
+        wprintf(NO_LABEL_FORMAT_STR, ansBuffer);
+        return AKINATOR_SUCCESS;
+    }
+
+    while (getPlayerResponse(ansBuffer, REQUEST_STRING) != RESPONSE_SUCCESS_STRING)
+        ;
+    node_t *secondLabel = treeFind(akinator->root, ansBuffer, akinatorStrCmp);
+    if (!secondLabel) {
+        wprintf(NO_LABEL_FORMAT_STR, ansBuffer);
+        return AKINATOR_SUCCESS;
+    }
+
+    objProperty_t *firstDef  = createDefinition(akinator, firstLabel);
+    objProperty_t *secondDef = createDefinition(akinator, secondLabel);
+    size_t idx = 0;
+    while (firstDef[idx].label[0] &&
+           firstDef[idx].negative == secondDef[idx].negative &&
+           wcscasecmp(firstDef[idx].label, secondDef[idx].label) == 0)
+    {
+        idx++;
+    }
+
+    ttsPrintf(COMPARE_FORMAT_STR, firstLabel->data, secondLabel->data);
+    ttsPrintf(L"%ls ", firstLabel->data);
+    printDefinition(firstDef + idx);
+
+    ttsPrintf(L", а %ls ", secondLabel->data);
+    printDefinition(secondDef + idx);
+
+    ttsPrintf(L"\n");
+    ttsFlush();
+    free(firstDef);
+    free(secondDef);
+    return AKINATOR_SUCCESS;
+}
+
 enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
+    MY_ASSERT(akinator, exit(1));
+
     wchar_t ansBuffer[AKINATOR_BUFFER_SIZE] = L"";
     akinatorWelcomeMessage();
 
@@ -231,6 +296,9 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
 
         if (playerAnswer == RESPONSE_SUCCESS_DEFINITION) {
             akinatorGiveDefinition(akinator, ansBuffer);
+            continue;
+        } else if (playerAnswer == RESPONSE_SUCCESS_COMPARE) {
+            akinatorCompare(akinator, ansBuffer);
             continue;
         }
 
@@ -310,7 +378,7 @@ static enum akinatorStatus akinatorSaveDataBase(Akinator_t *akinator) {
 }
 
 enum akinatorStatus akinatorDelete(Akinator_t *akinator) {
-    treeDump(akinator->root, sPrint);
+    treeDump(akinator->root, akinatorSWPrint);
     wprintf(SAVE_DATA_FORMAT_STR);
     wchar_t ansBuffer[MAX_LABEL_LEN] = L"";
 
@@ -326,4 +394,8 @@ enum akinatorStatus akinatorDelete(Akinator_t *akinator) {
     return AKINATOR_SUCCESS;
 }
 
+enum akinatorStatus akinatorDump(Akinator_t *akinator) {
+    MY_ASSERT(akinator, exit(0));
+    return AKINATOR_SUCCESS;
+}
 

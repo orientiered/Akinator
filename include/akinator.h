@@ -22,7 +22,10 @@ const wchar_t * const PLAY_AGAIN_FORMAT_STR     = L"Хотите сыграть 
 const wchar_t * const SAVE_DATA_FORMAT_STR      = L"Сохранить прогресс? (Y/n)\n";
 
 const wchar_t * const GIVE_DEFINITION_SCAN_STR  = L" Шо такое \"%l[^\n\"]\"";
+const wchar_t * const COMPARE_SCAN_STR          = L" Сравни%n";
 const wchar_t * const NO_LABEL_FORMAT_STR       = L"Я не знаю, что такое %ls\n";
+const wchar_t * const COMPARE_FORMAT_STR        = L"%ls отличается от %ls тем, что ";
+
 enum requestType {
     REQUEST_YES_NO,
     REQUEST_STRING,
@@ -33,6 +36,7 @@ enum responseStatus {
     RESPONSE_SUCCESS_NO,
     RESPONSE_SUCCESS_STRING,
     RESPONSE_SUCCESS_DEFINITION,
+    RESPONSE_SUCCESS_COMPARE,
     RESPONSE_BAD_INPUT,
     RESPONSE_NO
 };

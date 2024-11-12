@@ -51,8 +51,10 @@ enum treeStatus treeInsert(node_t *tree, const void *elem, cmpFunction_t cmp);
 node_t *treeAdd(node_t *node, const void *elem, bool right);
 
 /// @brief Find given element in tree
-/// If cmp == NULL searches through all elements, else tree is considered as sorted
+/// If cmp == NULL uses memcmp
 node_t *treeFind(node_t *tree, const void *elem, cmpFunction_t cmp);
+
+node_t *treeSortFind(node_t *tree, const void *elem, cmpFunction_t cmp);
 
 node_t *nodeCtor(const void *elem, node_t *parent, size_t elemSize);
 

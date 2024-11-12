@@ -42,6 +42,8 @@ void percentageBar(size_t value, size_t maxValue, unsigned points, long long tim
 void swap(void* a, void* b, size_t len);
 void swapByByte(void* a, void* b, size_t len);
 
+void reverseArray(void *array, size_t elemSize, size_t len);
+
 /// @brief memset with multiple byte values
 void memValSet(void *start, const void *elem, size_t elemSize, size_t length);
 

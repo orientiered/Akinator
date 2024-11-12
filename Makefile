@@ -1,7 +1,7 @@
 #Almost universal makefile
 
 #directories with other modules (including itself)
-WORKING_DIRS := ./ global/ tree/
+WORKING_DIRS := ./ global/ containers/
 #Name of directory where .o and .d files will be stored
 OBJDIR := build
 OBJ_DIRS := $(addsuffix $(OBJDIR),$(WORKING_DIRS))
@@ -26,17 +26,17 @@ endif
 #Names of compiled executable
 NAME := ./akin.out
 #Name of directory with headers
-INCLUDEDIRS := include global/include tree/include
+INCLUDEDIRS := include global/include containers/include
 
 GLOBAL_SRCS     := $(addprefix global/source/, argvProcessor.cpp logger.cpp utils.cpp)
 GLOBAL_OBJS     := $(subst source,$(OBJDIR), $(GLOBAL_SRCS:%.cpp=%.o))
 GLOBAL_DEPS     := $(GLOBAL_OBJS:%.o=%.d)
 
-CONTAINER_SRCS  := $(addprefix tree/source/, tree.cpp cList.cpp)
+CONTAINER_SRCS  := $(addprefix containers/source/, tree.cpp cList.cpp)
 CONTAINER_OBJS  := $(subst source,$(OBJDIR), $(CONTAINER_SRCS:%.cpp=%.o))
 CONTAINER_DEPS  := $(CONTAINER_OBJS:%.o=%.d)
 
-LOCAL_SRCS      := source/main.cpp source/akinator.cpp source/tts.cpp
+LOCAL_SRCS      := $(addprefix source/, main.cpp akinator.cpp tts.cpp)
 LOCAL_OBJS      := $(subst source,$(OBJDIR), $(LOCAL_SRCS:%.cpp=%.o))
 LOCAL_DEPS      := $(LOCAL_OBJS:%.o=%.d)
 
@@ -59,7 +59,7 @@ $(GLOBAL_OBJS)     : global/$(OBJDIR)/%.o : global/source/%.cpp
 	$(CMD_MKDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(CONTAINER_OBJS)  : tree/$(OBJDIR)/%.o : tree/source/%.cpp
+$(CONTAINER_OBJS)  : containers/$(OBJDIR)/%.o : containers/source/%.cpp
 	$(CMD_MKDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -75,7 +75,7 @@ $(GLOBAL_DEPS)     : global/$(OBJDIR)/%.d : global/source/%.cpp
 	$(CMD_MKDIR)
 	$(CC) -E $(CFLAGS) $< -MM -MT $(@:.d=.o) > $@
 
-$(CONTAINER_DEPS)  : tree/$(OBJDIR)/%.d : global/source/%.cpp
+$(CONTAINER_DEPS)  : containers/$(OBJDIR)/%.d : containers/source/%.cpp
 	$(CMD_MKDIR)
 	$(CC) -E $(CFLAGS) $< -MM -MT $(@:.d=.o) > $@
 
