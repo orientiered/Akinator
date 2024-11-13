@@ -1,6 +1,9 @@
 #ifndef AKINATOR_H
 #define AKINATOR_H
 
+#define AKINATOR_DUMP_DOT_FORMAT "akinator_%04zu.dot"
+#define AKINATOR_DUMP_IMG_FORMAT "akinator_dump_%04zu."
+
 const size_t MAX_LABEL_LEN = 128;
 const size_t AKINATOR_BUFFER_SIZE = 256;
 const char * const AKINATOR_DATA_DIR = "data";
@@ -48,15 +51,20 @@ enum akinatorStatus {
 };
 
 typedef struct {
+    sf::RenderWindow *window;
+    sf::Font *font;
+
     char *databaseFile;
 
+    enum responseStatus playerResponse;
+    bool isRunning;
     node_t *root;
     node_t *current;
 } Akinator_t;
 
-enum akinatorStatus akinatorInit(const char *dataBaseFile, Akinator_t *akinator);
+enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile, sf::RenderWindow *window, sf::Font *font);
 enum akinatorStatus akinatorPlay(Akinator_t *akinator);
 enum akinatorStatus akinatorDelete(Akinator_t *akinator);
-enum akinatorStatus akinatorDump(Akinator_t *akinator, node_t *highlight);
+size_t akinatorDump(Akinator_t *akinator, node_t *highlight);
 
 #endif

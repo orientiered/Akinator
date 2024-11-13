@@ -6,6 +6,9 @@
 typedef int (*cmpFunction_t)(const void *a, const void *b);
 typedef int (*printFunction_t)(void *buffer, const void *a);
 
+#define TREE_DUMP_DOT_FORMAT "tree_%04zu.dot"
+#define TREE_DUMP_IMG_FORMAT "tree_dump_%04zu."
+
 enum treeStatus {
     TREE_SUCCESS = 0,
     TREE_ERROR   = 1,

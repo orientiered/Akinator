@@ -4,6 +4,8 @@
 #include <wchar.h>
 #include <locale.h>
 
+#include <SFML/Graphics.hpp>
+
 #include "error_debug.h"
 #include "logger.h"
 #include "tree.h"
@@ -16,13 +18,16 @@ int sPrintDouble(void *buffer, const void* a);
 void binTreeTest();
 
 int main() {
+    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Akinator");
+    sf::Font font;
+    font.loadFromFile("Oswald-VariableFont_wght.ttf");
+
     logOpen("log.txt", L_HTML_MODE);
     setLogLevel(L_EXTRA);
     logDisableBuffering();
-    // ttsSpeak(L"Привет, это тест озвучки из программы на Си\n");
-    //binTreeTest();
     Akinator_t akinator = {0};
-    akinatorInit("dataBase.tdf", &akinator);
+    if (akinatorInit(&akinator, "dataBase.tdf", &window, &font) != AKINATOR_SUCCESS)
+        return 1;
     akinatorPlay(&akinator);
     akinatorDelete(&akinator);
 

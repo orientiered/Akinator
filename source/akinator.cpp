@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <stdint.h>
 
+#include <SFML/Graphics.hpp>
+
 #include "logger.h"
 #include "utils.h"
 
@@ -85,7 +87,14 @@ static node_t *recursiveReadDataBase(FILE *dataBase, node_t *parent) {
 }
 
 
-enum akinatorStatus akinatorInit(const char *dataBaseFile, Akinator_t *akinator) {
+enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile, sf::RenderWindow *window, sf::Font *font) {
+    //TODO: check input parameters
+    akinator->window = window;
+    akinator->font   = font;
+
+    akinator->isRunning = true;
+    akinator->playerResponse = RESPONSE_NO;
+
     char buffer[AKINATOR_BUFFER_SIZE] = ""; //internal buffer for string manipulations
     sprintf(buffer, "%s/%s", AKINATOR_DATA_DIR, dataBaseFile);
     logPrint(L_DEBUG, 0, "Initializing akinator\n"
@@ -100,7 +109,8 @@ enum akinatorStatus akinatorInit(const char *dataBaseFile, Akinator_t *akinator)
         logPrint(L_ZERO, 1, "Failed to read dataBase from '%s'\n"
                             "Akinator will use empty dataBase\n", buffer);
 
-        akinator->root = nodeCtor(L"Неизвестно что", NULL, sizeof(wchar_t) * MAX_LABEL_LEN);
+        const wchar_t *rootNodeLabel = L"Неизвестно что";
+        akinator->root = nodeCtor(rootNodeLabel, NULL, sizeof(wchar_t) * (wcslen(rootNodeLabel) + 1));
         akinator->current = akinator->root;
         logPrint(L_DEBUG, 0, "Successfully constructed empty akinator[%p]: root[%p]\n", akinator, akinator->root);
         return AKINATOR_SUCCESS;
@@ -185,6 +195,10 @@ typedef struct {
     bool negative;
 } objProperty_t;
 
+static bool isEqualObjProperty(const objProperty_t *a, const objProperty_t *b) {
+    return (a->negative == b->negative) && wcscasecmp(a->label, b->label) == 0;
+}
+
 static objProperty_t *createDefinition(Akinator_t *akinator, node_t *object) {
     MY_ASSERT(akinator, exit(1));
     MY_ASSERT(object, exit(1));
@@ -259,12 +273,8 @@ static enum akinatorStatus akinatorCompare(Akinator_t *akinator, wchar_t *ansBuf
     objProperty_t *firstDef  = createDefinition(akinator, firstLabel);
     objProperty_t *secondDef = createDefinition(akinator, secondLabel);
     size_t idx = 0;
-    while (firstDef[idx].label[0] &&
-           firstDef[idx].negative == secondDef[idx].negative &&
-           wcscasecmp(firstDef[idx].label, secondDef[idx].label) == 0)
-    {
+    while (firstDef[idx].label[0] && isEqualObjProperty(firstDef + idx, secondDef + idx))
         idx++;
-    }
 
     ttsPrintf(COMPARE_FORMAT_STR, firstLabel->data, secondLabel->data);
     ttsPrintf(L"%ls ", firstLabel->data);
@@ -286,57 +296,99 @@ static enum akinatorStatus akinatorCompare(Akinator_t *akinator, wchar_t *ansBuf
     return AKINATOR_SUCCESS;
 }
 
+static enum akinatorStatus akinatorHandleQuestion(Akinator_t *akinator) {
+    if (akinator->playerResponse == RESPONSE_SUCCESS_YES) {
+        akinator->current = akinator->current->left;
+        return AKINATOR_SUCCESS;
+    }
+    else if (akinator->playerResponse == RESPONSE_SUCCESS_NO) {
+        akinator->current = akinator->current->right;
+        return AKINATOR_SUCCESS;
+    }
+    LOG_PRINT(L_ZERO, 1, "Wrong response type: %d\n", akinator->playerResponse);
+    return AKINATOR_ERROR;
+}
+
+static enum akinatorStatus akinatorHandleLeaf(Akinator_t *akinator, wchar_t *ansBuffer) {
+    if (akinator->playerResponse == RESPONSE_SUCCESS_YES) {
+        ttsPrintf(CORRECT_GUESS_FORMAT_STR);
+    } else if (akinator->playerResponse == RESPONSE_SUCCESS_NO) {
+        ttsPrintf(ADD_OBJECT_FORMAT_STR);
+        ttsFlush();
+        akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_STRING);
+        treeAdd(akinator->current, ansBuffer, 0);
+        treeAdd(akinator->current, akinator->current->data, 1);
+
+        ttsPrintf(OBJECT_DIFFER_FORMAT_STR, ansBuffer, akinator->current->data);
+        ttsFlush();
+        akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_STRING);
+        wcscpy((wchar_t*)(akinator->current->data), ansBuffer);
+    }
+
+    ttsPrintf(PLAY_AGAIN_FORMAT_STR);
+    ttsFlush();
+    akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
+    akinator->current = akinator->root;
+    akinator->isRunning = (akinator->playerResponse == RESPONSE_SUCCESS_YES);
+
+    return AKINATOR_SUCCESS;
+}
+
 enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
     MY_ASSERT(akinator, exit(1));
 
     wchar_t ansBuffer[AKINATOR_BUFFER_SIZE] = L"";
     akinatorWelcomeMessage();
 
-    bool run = true;
-    enum responseStatus playerAnswer = RESPONSE_BAD_INPUT;
+    sf::RenderWindow *window = akinator->window;
+    sf::Texture akinatorDumpTexture;
+    akinatorDumpTexture.create(1920, 1080);
+    sf::Sprite akinatorDumpImg;
+    char dumpFileName[64] = "";
+    akinatorDumpImg.setTexture(akinatorDumpTexture);
 
-    while (run) {
-        akinatorDump(akinator, akinator->current);
+    while (akinator->isRunning && window->isOpen())
+    {
+        sf::Event event;
+        while (window->pollEvent(event)) {
+            if (event.type == sf::Event::Closed)
+                window->close();
+        }
+        if (!window->isOpen()) break;
+        size_t imgNumber = akinatorDump(akinator, akinator->current);
+        sprintf(dumpFileName, "logs/img/" AKINATOR_DUMP_IMG_FORMAT "png", imgNumber);
+
+        logPrint(L_DEBUG, 0, "Loading img %s\n", dumpFileName);
+        if (!akinatorDumpTexture.loadFromFile(dumpFileName)) {
+            logPrint(L_ZERO, 1, "Can't load img %s\n", dumpFileName);
+        }
+        akinatorDumpImg.setScale(sf::Vector2f(1.5, 1.5));
+        // akinatorDumpImg.setTexture(akinatorDumpTexture);
+        logPrint(L_DEBUG, 0, "Loaded img %dx%d\n", akinatorDumpTexture.getSize().x, akinatorDumpTexture.getSize().y);
+
+        window->clear();
+        window->draw(akinatorDumpImg);
+        window->display();
+
         ttsPrintf(QUESTION_FORMAT_STR, akinator->current->data);
         ttsFlush();
-        playerAnswer = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
+        akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
 
-        if (playerAnswer == RESPONSE_SUCCESS_DEFINITION) {
+        if (akinator->playerResponse == RESPONSE_SUCCESS_DEFINITION) {
             akinatorGiveDefinition(akinator, ansBuffer);
             continue;
-        } else if (playerAnswer == RESPONSE_SUCCESS_COMPARE) {
+        } else if (akinator->playerResponse == RESPONSE_SUCCESS_COMPARE) {
             akinatorCompare(akinator, ansBuffer);
             continue;
         }
 
         if (akinator->current->left) {
-            if (playerAnswer == RESPONSE_SUCCESS_YES)
-                akinator->current = akinator->current->left;
-            else if (playerAnswer == RESPONSE_SUCCESS_NO)
-                akinator->current = akinator->current->right;
+            akinatorHandleQuestion(akinator);
         } else {
-            if (playerAnswer == RESPONSE_SUCCESS_YES) {
-                ttsPrintf(CORRECT_GUESS_FORMAT_STR);
-            } else if (playerAnswer == RESPONSE_SUCCESS_NO) {
-                ttsPrintf(ADD_OBJECT_FORMAT_STR);
-                ttsFlush();
-                playerAnswer = getPlayerResponse(ansBuffer, REQUEST_STRING);
-                treeAdd(akinator->current, ansBuffer, 0);
-                treeAdd(akinator->current, akinator->current->data, 1);
-
-                ttsPrintf(OBJECT_DIFFER_FORMAT_STR, ansBuffer, akinator->current->data);
-                ttsFlush();
-                playerAnswer = getPlayerResponse(ansBuffer, REQUEST_STRING);
-                wcscpy((wchar_t*)(akinator->current->data), ansBuffer);
-            }
-
-            ttsPrintf(PLAY_AGAIN_FORMAT_STR);
-            ttsFlush();
-            playerAnswer = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
-            akinator->current = akinator->root;
-            run = (playerAnswer == RESPONSE_SUCCESS_YES) ? true : false;
+            akinatorHandleLeaf(akinator, ansBuffer);
         }
     }
+    window->close();
     return AKINATOR_SUCCESS;
 }
 
@@ -381,6 +433,8 @@ static enum akinatorStatus akinatorSaveDataBase(Akinator_t *akinator) {
         logPrint(L_ZERO, 1, "[Error]Failed to save database\n");
         return AKINATOR_ERROR;
     }
+
+    fclose(database);
     return AKINATOR_SUCCESS;
 }
 
@@ -402,7 +456,8 @@ enum akinatorStatus akinatorDelete(Akinator_t *akinator) {
     return AKINATOR_SUCCESS;
 }
 
-enum akinatorStatus akinatorDump(Akinator_t *akinator, node_t *highlight) {
+//TODO: change function name
+size_t akinatorDump(Akinator_t *akinator, node_t *highlight) {
     MY_ASSERT(akinator, exit(0));
     static size_t dumpCounter = 0;
     dumpCounter++;
@@ -414,7 +469,7 @@ enum akinatorStatus akinatorDump(Akinator_t *akinator, node_t *highlight) {
     const char *HIGHLIGHT_COLOR    = "#fffb00";
 
     char buffer[128] = "";
-    sprintf(buffer, "logs/dot/akinator_%zu.dot", dumpCounter);
+    sprintf(buffer, "logs/dot/" AKINATOR_DUMP_DOT_FORMAT, dumpCounter);
     FILE *dotFile = fopen(buffer, "wb");
     fwprintf(dotFile, L"digraph {\n"
                       L"graph [splines=line]\n");
@@ -454,12 +509,18 @@ enum akinatorStatus akinatorDump(Akinator_t *akinator, node_t *highlight) {
     fwprintf(dotFile, L"}\n");
     fclose(dotFile);
 
-    sprintf(buffer, "dot logs/dot/akinator_%zu.dot -Tsvg -o logs/img/akinator_dump_%zu.svg", dumpCounter, dumpCounter);
+    const char *extension = "svg";
+    sprintf(buffer, "dot logs/dot/"AKINATOR_DUMP_DOT_FORMAT" -T%s -o logs/img/"AKINATOR_DUMP_IMG_FORMAT"%s",
+                                        dumpCounter,        extension,            dumpCounter,      extension);
     system(buffer);
-    sprintf(buffer, "dot logs/dot/akinator_%zu.dot -Tpng -o logs/img/akinator_dump_%zu.png", dumpCounter, dumpCounter);
+    logPrint(L_ZERO, 0, "<img src=\"img/" AKINATOR_DUMP_IMG_FORMAT "%s\" width=76%%>\n<hr>\n",
+                                            dumpCounter,         extension);
+
+    extension = "png";
+    sprintf(buffer, "dot logs/dot/"AKINATOR_DUMP_DOT_FORMAT" -T%s -o logs/img/"AKINATOR_DUMP_IMG_FORMAT"%s",
+                                        dumpCounter,        extension,            dumpCounter,      extension);
     system(buffer);
 
-    logPrint(L_ZERO, 0, "<img src=\"img/akinator_dump_%zu.svg\" width=76%%>\n<hr>\n", dumpCounter);
-    return AKINATOR_SUCCESS;
+    return dumpCounter;
 }
 

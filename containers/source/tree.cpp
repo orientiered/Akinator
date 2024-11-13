@@ -90,7 +90,7 @@ enum treeStatus treeDump(const node_t *tree, printFunction_t sPrint) {
     system("mkdir -p logs/dot logs/img");
 
     char buffer[128] = "";
-    sprintf(buffer, "logs/dot/tree_%zu.dot", dumpCounter);
+    sprintf(buffer, "logs/dot/" TREE_DUMP_DOT_FORMAT, dumpCounter);
     FILE *dotFile = fopen(buffer, "wb");
     fwprintf(dotFile, L"digraph {\n"
                       L"graph [splines=line]\n");
@@ -121,10 +121,12 @@ enum treeStatus treeDump(const node_t *tree, printFunction_t sPrint) {
     fwprintf(dotFile, L"}\n");
     fclose(dotFile);
 
-    sprintf(buffer, "dot logs/dot/tree_%zu.dot -Tsvg -o logs/img/tree_dump_%zu.svg", dumpCounter, dumpCounter);
+    const char *extension = "svg";
+    sprintf(buffer, "dot logs/dot/" TREE_DUMP_DOT_FORMAT " -T%s -o logs/img/" TREE_DUMP_IMG_FORMAT "%s",
+                                    dumpCounter,       extension,               dumpCounter,     extension);
     system(buffer);
 
-    logPrint(L_ZERO, 0, "<img src=\"img/tree_dump_%zu.svg\" width=76%%>\n<hr>\n", dumpCounter);
+    logPrint(L_ZERO, 0, "<img src=\"img/" TREE_DUMP_DOT_FORMAT "%s\" width=76%%>\n<hr>\n", dumpCounter, extension);
     return TREE_SUCCESS;
 }
 
