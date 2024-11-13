@@ -25,6 +25,7 @@ const wchar_t * const GIVE_DEFINITION_SCAN_STR  = L" Шо такое \"%l[^\n\"]
 const wchar_t * const COMPARE_SCAN_STR          = L" Сравни%n";
 const wchar_t * const NO_LABEL_FORMAT_STR       = L"Я не знаю, что такое %ls\n";
 const wchar_t * const COMPARE_FORMAT_STR        = L"%ls отличается от %ls тем, что ";
+const wchar_t * const COMPARE_SIMILAR_FORMAT_STR= L"\nИх общие черты ";
 
 enum requestType {
     REQUEST_YES_NO,
@@ -56,6 +57,6 @@ typedef struct {
 enum akinatorStatus akinatorInit(const char *dataBaseFile, Akinator_t *akinator);
 enum akinatorStatus akinatorPlay(Akinator_t *akinator);
 enum akinatorStatus akinatorDelete(Akinator_t *akinator);
-enum akinatorStatus akinatorDump(Akinator_t *akinator);
+enum akinatorStatus akinatorDump(Akinator_t *akinator, node_t *highlight);
 
 #endif

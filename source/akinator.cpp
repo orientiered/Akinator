@@ -273,6 +273,12 @@ static enum akinatorStatus akinatorCompare(Akinator_t *akinator, wchar_t *ansBuf
     ttsPrintf(L", а %ls ", secondLabel->data);
     printDefinition(secondDef + idx);
 
+    if (idx != 0) {
+        ttsPrintf(COMPARE_SIMILAR_FORMAT_STR);
+        firstDef[idx].label[0] = L'\0';
+        printDefinition(firstDef);
+    }
+
     ttsPrintf(L"\n");
     ttsFlush();
     free(firstDef);
@@ -290,6 +296,7 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
     enum responseStatus playerAnswer = RESPONSE_BAD_INPUT;
 
     while (run) {
+        akinatorDump(akinator, akinator->current);
         ttsPrintf(QUESTION_FORMAT_STR, akinator->current->data);
         ttsFlush();
         playerAnswer = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
@@ -388,14 +395,14 @@ enum akinatorStatus akinatorDelete(Akinator_t *akinator) {
             return AKINATOR_ERROR;
     }
 
-    akinatorDump(akinator);
+    akinatorDump(akinator, NULL);
     free(akinator->databaseFile);
     treeDtor(akinator->root);
 
     return AKINATOR_SUCCESS;
 }
 
-enum akinatorStatus akinatorDump(Akinator_t *akinator) {
+enum akinatorStatus akinatorDump(Akinator_t *akinator, node_t *highlight) {
     MY_ASSERT(akinator, exit(0));
     static size_t dumpCounter = 0;
     dumpCounter++;
@@ -404,6 +411,7 @@ enum akinatorStatus akinatorDump(Akinator_t *akinator) {
     const char *QUESTION_NO_COLOR  = "#EE1088";
     const char *LEAF_YES_COLOR     = "#10EE10";
     const char *LEAF_NO_COLOR      = "#EE1010";
+    const char *HIGHLIGHT_COLOR    = "#fffb00";
 
     char buffer[128] = "";
     sprintf(buffer, "logs/dot/akinator_%zu.dot", dumpCounter);
@@ -427,9 +435,10 @@ enum akinatorStatus akinatorDump(Akinator_t *akinator) {
         bool leaf      = (current->right || current->left);
         bool yes_node  = (current->parent == NULL || current->parent->left == current);
 
-        const char *color = ( leaf  &&  yes_node) ? LEAF_YES_COLOR :
-                            ( leaf  && !yes_node) ? LEAF_NO_COLOR  :
-                            (!leaf  &&  yes_node) ? QUESTION_YES_COLOR :
+        const char *color = (current == highlight) ? HIGHLIGHT_COLOR :
+                            ( leaf  &&  yes_node)  ? LEAF_YES_COLOR  :
+                            ( leaf  && !yes_node)  ? LEAF_NO_COLOR   :
+                            (!leaf  &&  yes_node)  ? QUESTION_YES_COLOR :
                             QUESTION_NO_COLOR;
 
         akinatorSWPrint(valueBuffer, current->data);
@@ -446,6 +455,8 @@ enum akinatorStatus akinatorDump(Akinator_t *akinator) {
     fclose(dotFile);
 
     sprintf(buffer, "dot logs/dot/akinator_%zu.dot -Tsvg -o logs/img/akinator_dump_%zu.svg", dumpCounter, dumpCounter);
+    system(buffer);
+    sprintf(buffer, "dot logs/dot/akinator_%zu.dot -Tpng -o logs/img/akinator_dump_%zu.png", dumpCounter, dumpCounter);
     system(buffer);
 
     logPrint(L_ZERO, 0, "<img src=\"img/akinator_dump_%zu.svg\" width=76%%>\n<hr>\n", dumpCounter);
