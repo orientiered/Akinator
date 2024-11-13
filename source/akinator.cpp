@@ -341,11 +341,22 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
     akinatorWelcomeMessage();
 
     sf::RenderWindow *window = akinator->window;
+    sf::Vector2f windowSize = sf::Vector2f(window->getSize());
+
+    sf::Vector2f boxSize = sf::Vector2f(windowSize.x * 0.4, windowSize.y * 0.1);
+    sf::RectangleShape currentNodeBox(boxSize);
+    currentNodeBox.setOrigin(boxSize * 0.5f);
+    currentNodeBox.setPosition(windowSize * 0.5f);
+
+    sf::Text nodeText(L"Неизвестно что", *(akinator->font));
+    nodeText.setFillColor(sf::Color::Black);
+    nodeText.setPosition(windowSize * 0.5f + sf::Vector2f(-nodeText.getGlobalBounds().width * 0.5, 0));
+
     sf::Texture akinatorDumpTexture;
-    akinatorDumpTexture.create(1920, 1080);
+    akinatorDumpTexture.create(10, 10);
     sf::Sprite akinatorDumpImg;
     char dumpFileName[64] = "";
-    akinatorDumpImg.setTexture(akinatorDumpTexture);
+    akinatorDumpImg.setTexture(akinatorDumpTexture, true);
 
     while (akinator->isRunning && window->isOpen())
     {
@@ -363,10 +374,16 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             logPrint(L_ZERO, 1, "Can't load img %s\n", dumpFileName);
         }
         akinatorDumpImg.setScale(sf::Vector2f(1.5, 1.5));
-        // akinatorDumpImg.setTexture(akinatorDumpTexture);
+        akinatorDumpImg.setTexture(akinatorDumpTexture, true);
         logPrint(L_DEBUG, 0, "Loaded img %dx%d\n", akinatorDumpTexture.getSize().x, akinatorDumpTexture.getSize().y);
 
+        swprintf(ansBuffer, MAX_LABEL_LEN, QUESTION_FORMAT_STR, akinator->current->data);
+        nodeText.setString(ansBuffer);
+        nodeText.setPosition(windowSize * 0.5f + sf::Vector2f(-nodeText.getGlobalBounds().width * 0.5, 0));
+
         window->clear();
+        window->draw(currentNodeBox);
+        window->draw(nodeText);
         window->draw(akinatorDumpImg);
         window->display();
 
