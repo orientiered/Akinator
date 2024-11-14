@@ -47,7 +47,8 @@ enum responseStatus {
 
 enum akinatorStatus {
     AKINATOR_SUCCESS,
-    AKINATOR_ERROR
+    AKINATOR_ERROR,
+    AKINATOR_READ_ERROR
 };
 
 typedef struct {

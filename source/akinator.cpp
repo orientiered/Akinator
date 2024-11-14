@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include <SFML/Graphics.hpp>
+#include "sf-button.h"
 
 #include "logger.h"
 #include "utils.h"
@@ -16,9 +17,9 @@
 #include "cList.h"
 #include "tree.h"
 #include "akinator.h"
-#include "tts.h"
+#include "akinatorFileIO.h"
 
-static node_t *NODE_null = (node_t *) size_t(-1);
+#include "tts.h"
 
 static int akinatorSWPrint(void *buffer, const void *a) {
     return swprintf((wchar_t*)buffer, MAX_LABEL_LEN, (const wchar_t*) a);
@@ -26,66 +27,6 @@ static int akinatorSWPrint(void *buffer, const void *a) {
 static int akinatorStrCmp(const void *a, const void *b) {
     return wcscasecmp((const wchar_t *) a, (const wchar_t *) b);
 }
-
-static node_t *recursiveReadDataBase(FILE *dataBase, node_t *parent) {
-    wchar_t buffer[AKINATOR_BUFFER_SIZE] = L"";
-    size_t scannedCounter = 0;
-
-    // wlogPrint(L_DEBUG, 0, L"Scanning token:\n");
-    fwscanf(dataBase, L" %*1[\"]%l[^\"]%*1[\"]", buffer);
-    wlogPrint(L_DEBUG, 0, L"Akinator: read token '%ls'\n", buffer);
-
-    bool nullNode = wcsncasecmp(L"_null", buffer, 5) == 0;
-    logFlush();
-
-
-    node_t *newNode = NULL;
-    if (nullNode)
-        logPrint(L_DEBUG, 0, "\t'_null' node, don't creating it\n");
-    else
-        newNode = nodeCtor(buffer, parent, sizeof(wchar_t) * MAX_LABEL_LEN);
-
-
-    fwscanf(dataBase, L" : %n", &scannedCounter);
-    if (scannedCounter != 0) {
-        if (nullNode) {
-            logPrint(L_ZERO, 1, "[Wrong format]Expected ; after '_null' node, got :\n");
-            return NULL;
-        }
-
-        wlogPrint(L_ZERO, 0, L"\tScanning children\n");
-        newNode->left  = recursiveReadDataBase(dataBase, newNode);
-        if (!newNode->left) {
-            treeDtor(newNode);
-            return NULL;
-        } else if (newNode->left == NODE_null) {
-            newNode->left = NULL;
-        }
-
-        newNode->right = recursiveReadDataBase(dataBase, newNode);
-        if (!newNode->right) {
-            treeDtor(newNode);
-            return NULL;
-        } else if (newNode->right == NODE_null) {
-            newNode->right = NULL;
-        }
-
-        return newNode;
-    }
-
-    fwscanf(dataBase, L" ; %n", &scannedCounter);
-    if (scannedCounter != 0) {
-        if (nullNode) return NODE_null;
-
-        wlogPrint(L_EXTRA, 0, L"\tCurrent token is leaf\n");
-        return newNode;
-    } else {
-        wlogPrint(L_ZERO, 1, L"[Wrong format]Expected ; or : got neither\n");
-        treeDtor(newNode);
-        return NULL;
-    }
-}
-
 
 enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile, sf::RenderWindow *window, sf::Font *font) {
     //TODO: check input parameters
@@ -117,14 +58,14 @@ enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile,
     }
 
     FILE *dataBase = fopen(buffer, "rb");
-    node_t *dataBaseRoot = recursiveReadDataBase(dataBase, NULL);
-    if (dataBaseRoot == NULL) {
+    enum akinatorStatus dataBaseRoot = readDatabaseFromFile(dataBase, akinator);
+    if (dataBaseRoot == AKINATOR_READ_ERROR) {
         logPrint(L_ZERO, 1, "Database has wrong format, can't read\n");
         return AKINATOR_ERROR;
     }
-    akinator->root = akinator->current = dataBaseRoot;
     fclose(dataBase);
-    if (getLogLevel() >= L_DEBUG) treeDump(dataBaseRoot, akinatorSWPrint);
+
+    if (getLogLevel() >= L_DEBUG) treeDump(akinator->root, akinatorSWPrint);
     return AKINATOR_SUCCESS;
 }
 
@@ -299,10 +240,12 @@ static enum akinatorStatus akinatorCompare(Akinator_t *akinator, wchar_t *ansBuf
 static enum akinatorStatus akinatorHandleQuestion(Akinator_t *akinator) {
     if (akinator->playerResponse == RESPONSE_SUCCESS_YES) {
         akinator->current = akinator->current->left;
+        akinator->playerResponse = RESPONSE_NO;
         return AKINATOR_SUCCESS;
     }
     else if (akinator->playerResponse == RESPONSE_SUCCESS_NO) {
         akinator->current = akinator->current->right;
+        akinator->playerResponse = RESPONSE_NO;
         return AKINATOR_SUCCESS;
     }
     LOG_PRINT(L_ZERO, 1, "Wrong response type: %d\n", akinator->playerResponse);
@@ -343,6 +286,13 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
     sf::RenderWindow *window = akinator->window;
     sf::Vector2f windowSize = sf::Vector2f(window->getSize());
 
+    Button_t buttonYes = {0};
+    //TODO: labels should be in constants
+    buttonCtor(&buttonYes, window, akinator->font, L"Да",  sf::Vector2f(0.3, 0.8), sf::Vector2f(0.15, 0.09));
+    Button_t buttonNo  = {0};
+    buttonCtor(&buttonNo,  window, akinator->font, L"Нет", sf::Vector2f(0.6, 0.8), sf::Vector2f(0.15, 0.09));
+
+    //TODO: rework this code, maybe use button
     sf::Vector2f boxSize = sf::Vector2f(windowSize.x * 0.4, windowSize.y * 0.1);
     sf::RectangleShape currentNodeBox(boxSize);
     currentNodeBox.setOrigin(boxSize * 0.5f);
@@ -358,24 +308,49 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
     char dumpFileName[64] = "";
     akinatorDumpImg.setTexture(akinatorDumpTexture, true);
 
-    while (akinator->isRunning && window->isOpen())
-    {
+    bool updateDumpImg = true;
+    while (akinator->isRunning && window->isOpen()) {
         sf::Event event;
-        while (window->pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
-                window->close();
-        }
-        if (!window->isOpen()) break;
-        size_t imgNumber = akinatorDump(akinator, akinator->current);
-        sprintf(dumpFileName, "logs/img/" AKINATOR_DUMP_IMG_FORMAT "png", imgNumber);
+        buttonUpdate(&buttonYes);
+        buttonUpdate(&buttonNo);
 
-        logPrint(L_DEBUG, 0, "Loading img %s\n", dumpFileName);
-        if (!akinatorDumpTexture.loadFromFile(dumpFileName)) {
-            logPrint(L_ZERO, 1, "Can't load img %s\n", dumpFileName);
+        while (window->pollEvent(event)) {
+            switch(event.type) {
+            case sf::Event::Closed:
+            {
+                window->close();
+                break;
+            }
+            case sf::Event::MouseButtonPressed:
+            case sf::Event::MouseButtonReleased:
+            {
+                if (event.mouseButton.button == sf::Mouse::Left) {
+                    if (buttonClickEventUpdate(&buttonYes))
+                        akinator->playerResponse = RESPONSE_SUCCESS_YES;
+                    if (buttonClickEventUpdate(&buttonNo))
+                        akinator->playerResponse = RESPONSE_SUCCESS_NO;
+
+                }
+                break;
+            }
+            default:
+                break;
+            }
         }
-        akinatorDumpImg.setScale(sf::Vector2f(1.5, 1.5));
-        akinatorDumpImg.setTexture(akinatorDumpTexture, true);
-        logPrint(L_DEBUG, 0, "Loaded img %dx%d\n", akinatorDumpTexture.getSize().x, akinatorDumpTexture.getSize().y);
+
+        if (!window->isOpen()) break;
+        if (updateDumpImg) {
+            size_t imgNumber = akinatorDump(akinator, akinator->current);
+            sprintf(dumpFileName, "logs/img/" AKINATOR_DUMP_IMG_FORMAT "png", imgNumber);
+            logPrint(L_DEBUG, 0, "Loading img %s\n", dumpFileName);
+            if (!akinatorDumpTexture.loadFromFile(dumpFileName)) {
+                logPrint(L_ZERO, 1, "Can't load img %s\n", dumpFileName);
+            }
+            akinatorDumpImg.setScale(sf::Vector2f(1.5, 1.5));
+            akinatorDumpImg.setTexture(akinatorDumpTexture, true);
+            logPrint(L_DEBUG, 0, "Loaded img %dx%d\n", akinatorDumpTexture.getSize().x, akinatorDumpTexture.getSize().y);
+            updateDumpImg = false;
+        }
 
         swprintf(ansBuffer, MAX_LABEL_LEN, QUESTION_FORMAT_STR, akinator->current->data);
         nodeText.setString(ansBuffer);
@@ -385,11 +360,13 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
         window->draw(currentNodeBox);
         window->draw(nodeText);
         window->draw(akinatorDumpImg);
+        buttonDraw(&buttonYes);
+        buttonDraw(&buttonNo);
         window->display();
 
-        ttsPrintf(QUESTION_FORMAT_STR, akinator->current->data);
-        ttsFlush();
-        akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
+        // ttsPrintf(QUESTION_FORMAT_STR, akinator->current->data);
+        // ttsFlush();
+        //akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
 
         if (akinator->playerResponse == RESPONSE_SUCCESS_DEFINITION) {
             akinatorGiveDefinition(akinator, ansBuffer);
@@ -399,6 +376,10 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             continue;
         }
 
+        if (akinator->playerResponse == RESPONSE_NO) {
+            continue;
+        }
+        updateDumpImg = true;
         if (akinator->current->left) {
             akinatorHandleQuestion(akinator);
         } else {
@@ -406,52 +387,6 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
         }
     }
     window->close();
-    return AKINATOR_SUCCESS;
-}
-
-static enum akinatorStatus recursiveSaveDataBase(FILE *file, node_t *node, unsigned tabulation) {
-    MY_ASSERT(file, exit(1));
-
-    for (unsigned i = 0; i < tabulation; i++) fputwc(L'\t', file);
-    if (!node) {
-        fwprintf(file, L"\"%ls\";\n", NULL_NODE_STRING);
-        return AKINATOR_SUCCESS;
-    }
-
-    fwprintf(file, L"\"%ls\"", (wchar_t *)node->data);
-    if (!node->left && !node->right) {
-        fwprintf(file, L";\n");
-        return AKINATOR_SUCCESS;
-    }
-
-    if (node->left || node->right) fwprintf(file, L":\n");
-
-    recursiveSaveDataBase(file, node->left,  tabulation+1);
-    recursiveSaveDataBase(file, node->right, tabulation+1);
-
-    return AKINATOR_SUCCESS;
-}
-
-static enum akinatorStatus akinatorSaveDataBase(Akinator_t *akinator) {
-    MY_ASSERT(akinator, exit(1));
-
-    if (!akinator->databaseFile) {
-        strcpy(akinator->databaseFile, defaultDatabaseFile);
-        logPrint(L_ZERO, 1, "[Error]No output file name, using default name\n");
-
-    }
-    FILE *database = fopen(akinator->databaseFile, "wb");
-    if (!database) {
-        logPrint(L_ZERO, 1, "[Error]Failed to open database file '%s'\n", akinator->databaseFile);
-        return AKINATOR_ERROR;
-    }
-
-    if (recursiveSaveDataBase(database, akinator->root, 0) != AKINATOR_SUCCESS) {
-        logPrint(L_ZERO, 1, "[Error]Failed to save database\n");
-        return AKINATOR_ERROR;
-    }
-
-    fclose(database);
     return AKINATOR_SUCCESS;
 }
 

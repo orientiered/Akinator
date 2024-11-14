@@ -37,7 +37,7 @@ CONTAINER_SRCS  := $(addprefix containers/source/, tree.cpp cList.cpp)
 CONTAINER_OBJS  := $(subst source,$(OBJDIR), $(CONTAINER_SRCS:%.cpp=%.o))
 CONTAINER_DEPS  := $(CONTAINER_OBJS:%.o=%.d)
 
-LOCAL_SRCS      := $(addprefix source/, main.cpp akinator.cpp tts.cpp)
+LOCAL_SRCS      := $(addprefix source/, main.cpp akinator.cpp akinatorFileIO.cpp tts.cpp sf-button.cpp)
 LOCAL_OBJS      := $(subst source,$(OBJDIR), $(LOCAL_SRCS:%.cpp=%.o))
 LOCAL_DEPS      := $(LOCAL_OBJS:%.o=%.d)
 
