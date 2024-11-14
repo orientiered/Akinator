@@ -268,12 +268,6 @@ static enum akinatorStatus akinatorHandleLeaf(Akinator_t *akinator, wchar_t *ans
         wcscpy((wchar_t*)(akinator->current->data), ansBuffer);
     }
 
-    ttsPrintf(PLAY_AGAIN_FORMAT_STR);
-    ttsFlush();
-    akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
-    akinator->current = akinator->root;
-    akinator->isRunning = (akinator->playerResponse == RESPONSE_SUCCESS_YES);
-
     return AKINATOR_SUCCESS;
 }
 
@@ -309,11 +303,13 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
     akinatorDumpImg.setTexture(akinatorDumpTexture, true);
 
     bool updateDumpImg = true;
+    //ask if you want to play again
+    bool repeatGameStage = false;
     while (akinator->isRunning && window->isOpen()) {
         sf::Event event;
         buttonUpdate(&buttonYes);
         buttonUpdate(&buttonNo);
-
+        akinator->playerResponse = RESPONSE_NO;
         while (window->pollEvent(event)) {
             switch(event.type) {
             case sf::Event::Closed:
@@ -352,14 +348,26 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             updateDumpImg = false;
         }
 
-        swprintf(ansBuffer, MAX_LABEL_LEN, QUESTION_FORMAT_STR, akinator->current->data);
+        if (repeatGameStage) {
+            swprintf(ansBuffer, MAX_LABEL_LEN, PLAY_AGAIN_FORMAT_STR);
+            akinator->current = akinator->root;
+            if (akinator->playerResponse == RESPONSE_SUCCESS_YES) {
+                repeatGameStage = false;
+            } else if (akinator->playerResponse == RESPONSE_SUCCESS_NO) {
+                akinator->isRunning = false;
+                repeatGameStage = false;
+            }
+            akinator->playerResponse = RESPONSE_NO;
+        } else
+            swprintf(ansBuffer, MAX_LABEL_LEN, QUESTION_FORMAT_STR, akinator->current->data);
+
         nodeText.setString(ansBuffer);
         nodeText.setPosition(windowSize * 0.5f + sf::Vector2f(-nodeText.getGlobalBounds().width * 0.5, 0));
 
         window->clear();
         window->draw(currentNodeBox);
         window->draw(nodeText);
-        window->draw(akinatorDumpImg);
+        //window->draw(akinatorDumpImg);
         buttonDraw(&buttonYes);
         buttonDraw(&buttonNo);
         window->display();
@@ -384,6 +392,7 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             akinatorHandleQuestion(akinator);
         } else {
             akinatorHandleLeaf(akinator, ansBuffer);
+            repeatGameStage = true;
         }
     }
     window->close();
