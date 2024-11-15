@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-const sf::Color BUTTON_MAIN_COLOR   (0xFFFFFFFF);
-const sf::Color BUTTON_HOVER_COLOR  (0xEEEEEEFF);
-const sf::Color BUTTON_PRESSED_COLOR(0x888888FF);
+const sf::Color BUTTON_MAIN_COLOR   (0xFFFFFF55);
+const sf::Color BUTTON_HOVER_COLOR  (0xEEEEEE55);
+const sf::Color BUTTON_PRESSED_COLOR(0x88888855);
 
 typedef struct {
     sf::RenderWindow *window;

@@ -9,6 +9,8 @@
 #include <stdint.h>
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
+
 #include "sf-button.h"
 #include "sf-textform.h"
 
@@ -33,6 +35,14 @@ static enum akinatorStatus layoutCtor(GUILayout_t *gui, sf::RenderWindow *window
     gui->window = window;
     gui->font = font;
 
+    if (!gui->bkgMusic.openFromFile("bkgMusic.wav")) {
+        logPrint(L_ZERO, 1, "failed to open bkg music\n");
+    }
+
+    gui->bkgMusic.setVolume(100);
+    gui->bkgMusic.setLoop(true);
+    gui->bkgMusic.play();
+
     sf::Vector2f windowSize = sf::Vector2f(window->getSize());
 
     //TODO: labels should be in constants
@@ -40,11 +50,19 @@ static enum akinatorStatus layoutCtor(GUILayout_t *gui, sf::RenderWindow *window
     buttonCtor(&gui->buttonNo,  window, font, L"Нет", sf::Vector2f(0.6f, 0.8f), sf::Vector2f(0.15f, 0.09f));
 
     textFormCtor(&gui->inputForm, window, font, sf::Vector2f(0.5f, 0.2f), sf::Vector2f(0.3f, 0.1f));
+    textFormSetVisible(&gui->inputForm, false);
 
     buttonCtor(&gui->questionBox, window, font, L"Неизвестно что", sf::Vector2f(0.5f, 0.5f), sf::Vector2f(0.4f, 0.2f));
 
     gui->dumpTexture.create(10, 10);
     gui->dumpImg.setTexture(gui->dumpTexture, true);
+
+    gui->backgroundTexture.loadFromFile("background.jpg");
+    logPrint(L_DEBUG, 0, "Loaded bkg %dx%d\n", gui->backgroundTexture.getSize().x, gui->backgroundTexture.getSize().y);
+    gui->backgroundImg.setTexture(gui->backgroundTexture, true);
+    gui->backgroundImg.setOrigin(sf::Vector2f(gui->backgroundTexture.getSize()) * 0.5f);
+    gui->backgroundImg.setScale(sf::Vector2f(2, 2));
+    gui->backgroundImg.setPosition(windowSize * 0.5f);
 
     return AKINATOR_SUCCESS;
 }
@@ -151,6 +169,7 @@ static akinatorStatus akinatorWelcomeMessage() {
     return AKINATOR_SUCCESS;
 }
 
+/*============DEFINITION AND COMPARISON OF OBJECTS=========================*/
 typedef struct {
     wchar_t label[MAX_LABEL_LEN];
     bool negative;
@@ -257,6 +276,8 @@ static enum akinatorStatus akinatorCompare(Akinator_t *akinator, wchar_t *ansBuf
     return AKINATOR_SUCCESS;
 }
 
+
+/*=======================HANDLERS FOR DIFFERENT AKINATOR STATES========================================*/
 static enum akinatorStatus akinatorHandleQuestion(Akinator_t *akinator, enum choiceButtonsState choice) {
     if (akinator->current == NULL) {
         LOG_PRINT(L_ZERO, 1, "Current node[%p] is not question\n", akinator->current);
@@ -269,7 +290,12 @@ static enum akinatorStatus akinatorHandleQuestion(Akinator_t *akinator, enum cho
 	akinator->previous = akinator->current;
 	akinator->current = (choice == CLICKED_YES) ? akinator->current->left  : akinator->current->right;
     if (akinator->current == NULL) {
-        akinator->state = (choice == CLICKED_YES) ? STATE_ASK_PLAY_AGAIN : STATE_ADD_NEW_OBJECT;
+        if (choice == CLICKED_YES) {
+            akinator->state = STATE_ASK_PLAY_AGAIN;
+        } else {
+            akinator->state = STATE_ADD_NEW_OBJECT;
+            textFormSetVisible(&akinator->gui.inputForm, true);
+        }
     }
     return AKINATOR_SUCCESS;
 }
@@ -296,6 +322,8 @@ static enum akinatorStatus akinatorHandleNewObject(Akinator_t *akinator, wchar_t
         // getPlayerResponse(ansBuffer, REQUEST_STRING);
         wcscpy((wchar_t*)(akinator->previous->data), textFormGetText(&akinator->gui.inputForm));
         akinator->state = STATE_ASK_PLAY_AGAIN;
+        textFormSetVisible(&akinator->gui.inputForm, false);
+
         return AKINATOR_SUCCESS;
     }
 
@@ -344,6 +372,7 @@ static void layoutDraw(GUILayout_t *gui) {
 
     window->clear();
     //window->draw(akinatorDumpImg);
+    window->draw(gui->backgroundImg);
     buttonDraw(&gui->questionBox);
     buttonDraw(&gui->buttonYes);
     buttonDraw(&gui->buttonNo);
@@ -390,7 +419,6 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
 
     char dumpFileName[64] = "";
     bool updateDumpImg = true;
-
 
     enum choiceButtonsState choiceState = NOT_CLICKED;
     while (akinator->isRunning) {

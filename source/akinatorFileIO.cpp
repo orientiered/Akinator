@@ -5,6 +5,7 @@
 
 //? Could this include be removed?
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include "sf-button.h"
 #include "sf-textform.h"
 

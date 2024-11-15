@@ -27,7 +27,7 @@ endif
 NAME := ./akin.out
 #Name of directory with headers
 INCLUDEDIRS := include global/include containers/include
-LINK_LIBS	:= sfml-graphics sfml-system sfml-window
+LINK_LIBS	:= sfml-graphics sfml-system sfml-window sfml-audio
 
 GLOBAL_SRCS     := $(addprefix global/source/, argvProcessor.cpp logger.cpp utils.cpp)
 GLOBAL_OBJS     := $(subst source,$(OBJDIR), $(GLOBAL_SRCS:%.cpp=%.o))

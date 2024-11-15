@@ -68,6 +68,8 @@ enum akinatorStatus {
 };
 
 typedef struct {
+    sf::Music bkgMusic;
+
     sf::RenderWindow *window;
     sf::Font *font;
 
@@ -79,6 +81,9 @@ typedef struct {
 
     sf::Texture dumpTexture;
     sf::Sprite  dumpImg;
+
+    sf::Texture backgroundTexture;
+    sf::Sprite  backgroundImg;
 } GUILayout_t;
 
 typedef struct {

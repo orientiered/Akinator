@@ -18,7 +18,7 @@ typedef struct {
 
 void textFormCtor(TextForm_t *form, sf::RenderWindow *window, sf::Font *font, sf::Vector2f pos, sf::Vector2f size);
 
-void textFormSetVisible(bool visible);
+void textFormSetVisible(TextForm_t *form, bool visible);
 
 const wchar_t *textFormGetText(TextForm_t *form);
 

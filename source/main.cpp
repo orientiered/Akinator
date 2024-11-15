@@ -5,6 +5,7 @@
 #include <locale.h>
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include "sf-button.h"
 #include "sf-textform.h"
 
@@ -27,7 +28,7 @@ int main() {
     logOpen("log.txt", L_HTML_MODE);
     setLogLevel(L_EXTRA);
     logDisableBuffering();
-    Akinator_t akinator = {0};
+    Akinator_t akinator = {};
     if (akinatorInit(&akinator, "dataBase.tdf", &window, &font) != AKINATOR_SUCCESS)
         return 1;
     akinatorPlay(&akinator);
