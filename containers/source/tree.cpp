@@ -91,7 +91,7 @@ enum treeStatus treeDump(const node_t *tree, printFunction_t sPrint) {
 
     char buffer[128] = "";
     sprintf(buffer, "logs/dot/" TREE_DUMP_DOT_FORMAT, dumpCounter);
-    FILE *dotFile = fopen(buffer, "wb");
+    FILE *dotFile = fopen(buffer, "w");
     fwprintf(dotFile, L"digraph {\n"
                       L"graph [splines=line]\n");
 

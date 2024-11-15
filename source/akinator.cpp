@@ -255,17 +255,17 @@ static enum akinatorStatus akinatorHandleQuestion(Akinator_t *akinator, enum cho
     return AKINATOR_SUCCESS;
 }
 
-static enum akinatorStatus akinatorHandleNewObject(Akinator_t *akinator, wchar_t *ansBuffer) {
+static enum akinatorStatus akinatorHandleNewObject(Akinator_t *akinator, wchar_t *ansBuffer, TextForm_t *form, enum choiceButtonsState choice) {
     if (akinator->current != NULL || akinator->previous == NULL) {
         LOG_PRINT(L_ZERO, 1, "Current node can't be new object\n");
         return AKINATOR_ERROR;
     }
 
+    if (choice == NOT_CLICKED) return AKINATOR_SUCCESS;
+
     if (akinator->state == STATE_ADD_NEW_OBJECT) {
-        ttsPrintf(ADD_OBJECT_FORMAT_STR);
-        ttsFlush();
-        getPlayerResponse(ansBuffer, REQUEST_STRING);
-        treeAdd(akinator->previous, ansBuffer, 0);
+        // getPlayerResponse(ansBuffer, REQUEST_STRING);
+        treeAdd(akinator->previous, textFormGetText(form), 0);
         treeAdd(akinator->previous, akinator->previous->data, 1);
         akinator->state = STATE_ADD_NEW_QUESTION;
 
@@ -273,10 +273,8 @@ static enum akinatorStatus akinatorHandleNewObject(Akinator_t *akinator, wchar_t
     }
 
     if (akinator->state == STATE_ADD_NEW_QUESTION) {
-        ttsPrintf(OBJECT_DIFFER_FORMAT_STR, ansBuffer, akinator->previous->data);
-        ttsFlush();
-        getPlayerResponse(ansBuffer, REQUEST_STRING);
-        wcscpy((wchar_t*)(akinator->previous->data), ansBuffer);
+        // getPlayerResponse(ansBuffer, REQUEST_STRING);
+        wcscpy((wchar_t*)(akinator->previous->data), textFormGetText(form));
         akinator->state = STATE_ASK_PLAY_AGAIN;
         return AKINATOR_SUCCESS;
     }
@@ -331,7 +329,7 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
 
     Button_t buttonYes = {0};
     //TODO: labels should be in constants
-    buttonCtor(&buttonYes, window, akinator->font, L"Да",  sf::Vector2f(0.3, 0.8), sf::Vector2f(0.15, 0.09));
+    buttonCtor(&buttonYes, window, akinator->font, L"Да",  sf::Vector2f(0.4, 0.8), sf::Vector2f(0.15, 0.09));
     Button_t buttonNo  = {0};
     buttonCtor(&buttonNo,  window, akinator->font, L"Нет", sf::Vector2f(0.6, 0.8), sf::Vector2f(0.15, 0.09));
 
@@ -365,29 +363,29 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
         choiceState = NOT_CLICKED;
         while (window->pollEvent(event)) {
             switch(event.type) {
-            case sf::Event::Closed:
-            {
-                akinator->state = STATE_ASK_SAVE_DATABASE;
-                // window->close();
-                break;
-            }
-            case sf::Event::MouseButtonPressed:
-            case sf::Event::MouseButtonReleased:
-            {
-                if (event.mouseButton.button == sf::Mouse::Left) {
-                    if (buttonClickEventUpdate(&buttonYes))
-                        choiceState = CLICKED_YES;
-                    if (buttonClickEventUpdate(&buttonNo))
-                        choiceState = CLICKED_NO;
-                    textFormClickEventUpdate(&form);
+                case sf::Event::Closed:
+                {
+                    akinator->state = STATE_ASK_SAVE_DATABASE;
+                    // window->close();
+                    break;
                 }
-                break;
-            }
-            case sf::Event::TextEntered:
-                textFormUpdate(&form, event.text.unicode);
-                break;
-            default:
-                break;
+                case sf::Event::MouseButtonPressed:
+                case sf::Event::MouseButtonReleased:
+                {
+                    if (event.mouseButton.button == sf::Mouse::Left) {
+                        if (buttonClickEventUpdate(&buttonYes))
+                            choiceState = CLICKED_YES;
+                        if (buttonClickEventUpdate(&buttonNo))
+                            choiceState = CLICKED_NO;
+                        textFormClickEventUpdate(&form);
+                    }
+                    break;
+                }
+                case sf::Event::TextEntered:
+                    textFormUpdate(&form, event.text.unicode);
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -397,8 +395,12 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             akinatorHandleQuestion(akinator, choiceState);
             break;
         case STATE_ADD_NEW_OBJECT:
+            akinatorHandleNewObject(akinator, ansBuffer, &form, choiceState);
+            swprintf(ansBuffer, MAX_LABEL_LEN, ADD_OBJECT_FORMAT_STR);
+            break;
         case STATE_ADD_NEW_QUESTION:
-            akinatorHandleNewObject(akinator, ansBuffer);
+            akinatorHandleNewObject(akinator, ansBuffer, &form, choiceState);
+            swprintf(ansBuffer, MAX_LABEL_LEN, OBJECT_DIFFER_FORMAT_STR, akinator->previous->left->data, akinator->previous->right->data );
             break;
         case STATE_ASK_PLAY_AGAIN:
             swprintf(ansBuffer, MAX_LABEL_LEN, PLAY_AGAIN_FORMAT_STR);

@@ -20,6 +20,9 @@ static sf::Vector2f mapCoords(sf::Vector2f coords, const sf::RenderWindow *windo
 void textFormCtor(TextForm_t *form, sf::RenderWindow *window, sf::Font *font, sf::Vector2f pos, sf::Vector2f size) {
     form->window = window;
 
+    form->inputSize = 0;
+    memset(form->inputStr, 0, sizeof(wchar_t) * (MAX_INPUT_LEN + 1));
+
     form->box.setOrigin(mapCoords(size * 0.5f, window));
     form->box.setPosition(mapCoords(pos, window));
     form->box.setSize(mapCoords(size, window));
@@ -43,7 +46,7 @@ void textFormUpdate(TextForm_t *form, wchar_t symbol) {
     if (form->isSelected) {
         if (symbol == BACKSPACE_SYMBOL) {
             if (form->inputSize > 0)
-                form->inputStr[form->inputSize--] = L'\0';
+                form->inputStr[--form->inputSize] = L'\0';
         } else {
             if (form->inputSize < MAX_INPUT_LEN) {
                 form->inputStr[form->inputSize++] = symbol;
@@ -53,6 +56,16 @@ void textFormUpdate(TextForm_t *form, wchar_t symbol) {
     }
 
     form->label.setString(form->inputStr);
+}
+
+void textFormClear(TextForm_t *form) {
+    form->inputSize = 0;
+    form->inputStr[0] = L'\0';
+    form->label.setString(form->inputStr);
+}
+
+const wchar_t *textFormGetText(TextForm_t *form) {
+    return form->inputStr;
 }
 
 void textFormClickEventUpdate(TextForm_t *form) {

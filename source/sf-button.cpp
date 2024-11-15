@@ -25,9 +25,10 @@ void buttonCtor(Button_t *button, sf::RenderWindow *window, sf::Font *font,
 
     button->label.setFont(*font);
     button->label.setString(label);
-    button->label.setFillColor(sf::Color::Black);
-    button->label.setOrigin(mapCoords(size * 0.5f, window));
-    button->label.setPosition(mapCoords(pos, window));
+    button->label.setFillColor(sf::Color::Red);
+    // button->label.setOrigin(mapCoords(size * 0.5f, window));
+    sf::Vector2f textSize = {button->label.getGlobalBounds().width, button->label.getGlobalBounds().height};
+    button->label.setPosition(mapCoords(pos, window) - textSize * 0.5f);
 
     button->visible = true;
 }

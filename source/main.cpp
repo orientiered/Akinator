@@ -5,6 +5,8 @@
 #include <locale.h>
 
 #include <SFML/Graphics.hpp>
+#include "sf-button.h"
+#include "sf-textform.h"
 
 #include "error_debug.h"
 #include "logger.h"

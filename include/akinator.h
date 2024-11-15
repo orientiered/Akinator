@@ -35,6 +35,7 @@ enum requestType {
     REQUEST_STRING,
 };
 
+//TODO: i think it's deprecated
 enum responseStatus {
     RESPONSE_SUCCESS_YES,
     RESPONSE_SUCCESS_NO,
@@ -65,6 +66,17 @@ enum akinatorStatus {
     AKINATOR_ERROR,
     AKINATOR_READ_ERROR
 };
+
+typedef struct {
+    Button_t buttonYes;
+    Button_t buttonNo;
+
+    Button_t questionBox; ///< Not actually a button, just textbox
+    TextForm_t inputForm;
+
+    sf::Texture dumpTexture;
+    sf::Sprite  dumpImg;
+} UILayout_t;
 
 typedef struct {
     sf::RenderWindow *window;

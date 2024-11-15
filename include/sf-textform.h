@@ -20,6 +20,8 @@ void textFormCtor(TextForm_t *form, sf::RenderWindow *window, sf::Font *font, sf
 
 void textFormSetVisible(bool visible);
 
+const wchar_t *textFormGetText(TextForm_t *form);
+
 void textFormUpdate(TextForm_t *form, wchar_t symbol);
 void textFormClickEventUpdate(TextForm_t *form);
 
