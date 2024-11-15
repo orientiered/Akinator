@@ -39,6 +39,13 @@ void buttonSetVisible(Button_t *button, bool visible) {
         button->box.setFillColor(BUTTON_MAIN_COLOR);
 }
 
+void buttonSetLabel(Button_t *button, const wchar_t *label) {
+    button->label.setString(label);
+    sf::Vector2f textSize = {button->label.getGlobalBounds().width, button->label.getGlobalBounds().height};
+    sf::Vector2f centerPos = button->box.getPosition();
+    button->label.setPosition(centerPos - textSize * 0.5f);
+}
+
 void buttonUpdate(Button_t *button) {
     if (!button->visible)
         return;

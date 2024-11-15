@@ -21,6 +21,8 @@ void buttonCtor(Button_t *button, sf::RenderWindow *window, sf::Font *font,
 
 void buttonSetVisible(Button_t *button, bool visible);
 
+void buttonSetLabel(Button_t *button, const wchar_t *label);
+
 void buttonUpdate(Button_t *button);
 bool buttonClickEventUpdate(Button_t *button);
 

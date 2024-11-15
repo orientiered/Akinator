@@ -68,6 +68,9 @@ enum akinatorStatus {
 };
 
 typedef struct {
+    sf::RenderWindow *window;
+    sf::Font *font;
+
     Button_t buttonYes;
     Button_t buttonNo;
 
@@ -76,12 +79,10 @@ typedef struct {
 
     sf::Texture dumpTexture;
     sf::Sprite  dumpImg;
-} UILayout_t;
+} GUILayout_t;
 
 typedef struct {
-    sf::RenderWindow *window;
-    sf::Font *font;
-
+    GUILayout_t gui;
     char *databaseFile;
 
     enum akinatorState  state;
