@@ -45,6 +45,21 @@ enum responseStatus {
     RESPONSE_NO
 };
 
+enum choiceButtonsState {
+    CLICKED_YES =  1,
+    CLICKED_NO  = -1,
+    NOT_CLICKED =  0
+};
+
+enum akinatorState {
+    STATE_QUESTION,
+    STATE_ADD_NEW_OBJECT,
+    STATE_ADD_NEW_QUESTION,
+    STATE_ASK_PLAY_AGAIN,
+    STATE_ASK_SAVE_DATABASE,
+    STATE_END_EXECUTION
+};
+
 enum akinatorStatus {
     AKINATOR_SUCCESS,
     AKINATOR_ERROR,
@@ -57,9 +72,12 @@ typedef struct {
 
     char *databaseFile;
 
-    enum responseStatus playerResponse;
+    enum akinatorState  state;
+    //enum responseStatus playerResponse;
     bool isRunning;
     node_t *root;
+
+    node_t *previous;
     node_t *current;
 } Akinator_t;
 

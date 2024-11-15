@@ -126,7 +126,7 @@ enum treeStatus treeDump(const node_t *tree, printFunction_t sPrint) {
                                     dumpCounter,       extension,               dumpCounter,     extension);
     system(buffer);
 
-    logPrint(L_ZERO, 0, "<img src=\"img/" TREE_DUMP_DOT_FORMAT "%s\" width=76%%>\n<hr>\n", dumpCounter, extension);
+    logPrint(L_ZERO, 0, "<img src=\"img/" TREE_DUMP_IMG_FORMAT "%s\" width=76%%>\n<hr>\n", dumpCounter, extension);
     return TREE_SUCCESS;
 }
 

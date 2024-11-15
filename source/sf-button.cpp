@@ -5,6 +5,7 @@
 
 #include "sf-button.h"
 
+//TODO you can click only one button at a time
 static bool isAnyButtonPressed = false;
 
 /// @brief convert from (0,1)^2 to (0, window.width)x(0, window.height)
@@ -18,17 +19,29 @@ void buttonCtor(Button_t *button, sf::RenderWindow *window, sf::Font *font,
     button->window = window;
 
     button->box.setSize(mapCoords(size, window));
+    button->box.setOrigin(mapCoords(size * 0.5f, window));
     button->box.setPosition(mapCoords(pos, window));
     button->box.setFillColor(BUTTON_MAIN_COLOR);
 
     button->label.setFont(*font);
     button->label.setString(label);
     button->label.setFillColor(sf::Color::Black);
-    button->label.setPosition(mapCoords(pos + size * 0.5f, window));
+    button->label.setOrigin(mapCoords(size * 0.5f, window));
+    button->label.setPosition(mapCoords(pos, window));
 
+    button->visible = true;
+}
+
+void buttonSetVisible(Button_t *button, bool visible) {
+    button->visible = visible;
+    if (visible)
+        button->box.setFillColor(BUTTON_MAIN_COLOR);
 }
 
 void buttonUpdate(Button_t *button) {
+    if (!button->visible)
+        return;
+
     sf::Vector2f mousePos = sf::Vector2f(sf::Mouse::getPosition(*button->window));
     // bool mousePressed = sf::Mouse::isButtonPressed(sf::Mouse::Left);
     bool mouseInBox = button->box.getGlobalBounds().contains(mousePos);
@@ -44,6 +57,9 @@ void buttonUpdate(Button_t *button) {
 }
 
 bool buttonClickEventUpdate(Button_t *button) {
+    if (!button->visible)
+        return false;
+
     sf::Vector2f mousePos = sf::Vector2f(sf::Mouse::getPosition(*button->window));
     bool mouseInBox = button->box.getGlobalBounds().contains(mousePos);
     bool mousePressed = sf::Mouse::isButtonPressed(sf::Mouse::Left);
@@ -60,6 +76,9 @@ bool buttonClickEventUpdate(Button_t *button) {
 }
 
 void buttonDraw(Button_t *button) {
+    if (!button->visible)
+        return;
+
     button->window->draw(button->box);
     button->window->draw(button->label);
 }

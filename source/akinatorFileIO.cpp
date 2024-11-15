@@ -77,6 +77,7 @@ enum akinatorStatus readDatabaseFromFile(FILE *dataBase, Akinator_t *akinator) {
     node_t *root = recursiveReadDataBase(dataBase, NULL);
     if (!root) return AKINATOR_READ_ERROR;
     akinator->root = akinator->current = root;
+    akinator->previous = NULL;
     return AKINATOR_SUCCESS;
 }
 

@@ -10,6 +10,7 @@
 
 #include <SFML/Graphics.hpp>
 #include "sf-button.h"
+#include "sf-textform.h"
 
 #include "logger.h"
 #include "utils.h"
@@ -34,7 +35,6 @@ enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile,
     akinator->font   = font;
 
     akinator->isRunning = true;
-    akinator->playerResponse = RESPONSE_NO;
 
     char buffer[AKINATOR_BUFFER_SIZE] = ""; //internal buffer for string manipulations
     sprintf(buffer, "%s/%s", AKINATOR_DATA_DIR, dataBaseFile);
@@ -53,6 +53,7 @@ enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile,
         const wchar_t *rootNodeLabel = L"Неизвестно что";
         akinator->root = nodeCtor(rootNodeLabel, NULL, sizeof(wchar_t) * (wcslen(rootNodeLabel) + 1));
         akinator->current = akinator->root;
+        akinator->previous = NULL;
         logPrint(L_DEBUG, 0, "Successfully constructed empty akinator[%p]: root[%p]\n", akinator, akinator->root);
         return AKINATOR_SUCCESS;
     }
@@ -237,38 +238,86 @@ static enum akinatorStatus akinatorCompare(Akinator_t *akinator, wchar_t *ansBuf
     return AKINATOR_SUCCESS;
 }
 
-static enum akinatorStatus akinatorHandleQuestion(Akinator_t *akinator) {
-    if (akinator->playerResponse == RESPONSE_SUCCESS_YES) {
-        akinator->current = akinator->current->left;
-        akinator->playerResponse = RESPONSE_NO;
+static enum akinatorStatus akinatorHandleQuestion(Akinator_t *akinator, enum choiceButtonsState choice) {
+    if (akinator->current == NULL) {
+        LOG_PRINT(L_ZERO, 1, "Current node[%p] is not question\n", akinator->current);
+        return AKINATOR_ERROR;
+    }
+
+    if (choice == NOT_CLICKED)
+        return AKINATOR_SUCCESS;
+
+	akinator->previous = akinator->current;
+	akinator->current = (choice == CLICKED_YES) ? akinator->current->left  : akinator->current->right;
+    if (akinator->current == NULL) {
+        akinator->state = (choice == CLICKED_YES) ? STATE_ASK_PLAY_AGAIN : STATE_ADD_NEW_OBJECT;
+    }
+    return AKINATOR_SUCCESS;
+}
+
+static enum akinatorStatus akinatorHandleNewObject(Akinator_t *akinator, wchar_t *ansBuffer) {
+    if (akinator->current != NULL || akinator->previous == NULL) {
+        LOG_PRINT(L_ZERO, 1, "Current node can't be new object\n");
+        return AKINATOR_ERROR;
+    }
+
+    if (akinator->state == STATE_ADD_NEW_OBJECT) {
+        ttsPrintf(ADD_OBJECT_FORMAT_STR);
+        ttsFlush();
+        getPlayerResponse(ansBuffer, REQUEST_STRING);
+        treeAdd(akinator->previous, ansBuffer, 0);
+        treeAdd(akinator->previous, akinator->previous->data, 1);
+        akinator->state = STATE_ADD_NEW_QUESTION;
+
         return AKINATOR_SUCCESS;
     }
-    else if (akinator->playerResponse == RESPONSE_SUCCESS_NO) {
-        akinator->current = akinator->current->right;
-        akinator->playerResponse = RESPONSE_NO;
+
+    if (akinator->state == STATE_ADD_NEW_QUESTION) {
+        ttsPrintf(OBJECT_DIFFER_FORMAT_STR, ansBuffer, akinator->previous->data);
+        ttsFlush();
+        getPlayerResponse(ansBuffer, REQUEST_STRING);
+        wcscpy((wchar_t*)(akinator->previous->data), ansBuffer);
+        akinator->state = STATE_ASK_PLAY_AGAIN;
         return AKINATOR_SUCCESS;
     }
-    LOG_PRINT(L_ZERO, 1, "Wrong response type: %d\n", akinator->playerResponse);
+
+    LOG_PRINT(L_ZERO, 1, "Wrong state: %d\n", akinator->state);
     return AKINATOR_ERROR;
 }
 
-static enum akinatorStatus akinatorHandleLeaf(Akinator_t *akinator, wchar_t *ansBuffer) {
-    if (akinator->playerResponse == RESPONSE_SUCCESS_YES) {
-        ttsPrintf(CORRECT_GUESS_FORMAT_STR);
-    } else if (akinator->playerResponse == RESPONSE_SUCCESS_NO) {
-        ttsPrintf(ADD_OBJECT_FORMAT_STR);
-        ttsFlush();
-        akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_STRING);
-        treeAdd(akinator->current, ansBuffer, 0);
-        treeAdd(akinator->current, akinator->current->data, 1);
+static enum akinatorStatus akinatorHandlePlayAgain(Akinator_t *akinator, enum choiceButtonsState choice) {
+    if (choice == NOT_CLICKED) return AKINATOR_SUCCESS;
 
-        ttsPrintf(OBJECT_DIFFER_FORMAT_STR, ansBuffer, akinator->current->data);
-        ttsFlush();
-        akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_STRING);
-        wcscpy((wchar_t*)(akinator->current->data), ansBuffer);
+    if (choice == CLICKED_YES) {
+        akinator->current = akinator->root;
+        akinator->previous = NULL;
+        akinator->state = STATE_QUESTION;
+        return AKINATOR_SUCCESS;
     }
 
-    return AKINATOR_SUCCESS;
+    if (choice == CLICKED_NO) {
+        akinator->state = STATE_ASK_SAVE_DATABASE;
+        return AKINATOR_SUCCESS;
+    }
+
+    return AKINATOR_ERROR;
+}
+
+static enum akinatorStatus akinatorHandleSaveDatabase(Akinator_t *akinator, enum choiceButtonsState choice) {
+    if (choice == NOT_CLICKED)
+        return AKINATOR_SUCCESS;
+
+    if (choice == CLICKED_NO) {
+        akinator->state = STATE_END_EXECUTION;
+        return AKINATOR_SUCCESS;
+    }
+
+    if (choice == CLICKED_YES) {
+        akinator->state = STATE_END_EXECUTION;
+        return akinatorSaveDataBase(akinator);
+    }
+
+    return AKINATOR_ERROR;
 }
 
 enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
@@ -301,20 +350,25 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
     sf::Sprite akinatorDumpImg;
     char dumpFileName[64] = "";
     akinatorDumpImg.setTexture(akinatorDumpTexture, true);
-
     bool updateDumpImg = true;
-    //ask if you want to play again
-    bool repeatGameStage = false;
+
+    TextForm_t form = {0};
+    textFormCtor(&form, akinator->window, akinator->font, sf::Vector2f(0.5, 0.2), sf::Vector2f(0.3, 0.1));
+
+    enum choiceButtonsState choiceState = NOT_CLICKED;
+
     while (akinator->isRunning && window->isOpen()) {
         sf::Event event;
         buttonUpdate(&buttonYes);
         buttonUpdate(&buttonNo);
-        akinator->playerResponse = RESPONSE_NO;
+
+        choiceState = NOT_CLICKED;
         while (window->pollEvent(event)) {
             switch(event.type) {
             case sf::Event::Closed:
             {
-                window->close();
+                akinator->state = STATE_ASK_SAVE_DATABASE;
+                // window->close();
                 break;
             }
             case sf::Event::MouseButtonPressed:
@@ -322,19 +376,54 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             {
                 if (event.mouseButton.button == sf::Mouse::Left) {
                     if (buttonClickEventUpdate(&buttonYes))
-                        akinator->playerResponse = RESPONSE_SUCCESS_YES;
+                        choiceState = CLICKED_YES;
                     if (buttonClickEventUpdate(&buttonNo))
-                        akinator->playerResponse = RESPONSE_SUCCESS_NO;
-
+                        choiceState = CLICKED_NO;
+                    textFormClickEventUpdate(&form);
                 }
                 break;
             }
+            case sf::Event::TextEntered:
+                textFormUpdate(&form, event.text.unicode);
+                break;
             default:
                 break;
             }
         }
 
-        if (!window->isOpen()) break;
+        switch(akinator->state) {
+        case STATE_QUESTION:
+            swprintf(ansBuffer, MAX_LABEL_LEN, QUESTION_FORMAT_STR, akinator->current->data);
+            akinatorHandleQuestion(akinator, choiceState);
+            break;
+        case STATE_ADD_NEW_OBJECT:
+        case STATE_ADD_NEW_QUESTION:
+            akinatorHandleNewObject(akinator, ansBuffer);
+            break;
+        case STATE_ASK_PLAY_AGAIN:
+            swprintf(ansBuffer, MAX_LABEL_LEN, PLAY_AGAIN_FORMAT_STR);
+            akinatorHandlePlayAgain(akinator, choiceState);
+            break;
+        case STATE_ASK_SAVE_DATABASE:
+            swprintf(ansBuffer, MAX_LABEL_LEN, SAVE_DATA_FORMAT_STR);
+            akinatorHandleSaveDatabase(akinator, choiceState);
+            break;
+        case STATE_END_EXECUTION:
+            window->close();
+            akinator->isRunning = false;
+        }
+
+        // if (akinator->playerResponse == RESPONSE_SUCCESS_DEFINITION) {
+        //     akinatorGiveDefinition(akinator, ansBuffer);
+        //     continue;
+        // } else if (akinator->playerResponse == RESPONSE_SUCCESS_COMPARE) {
+        //     akinatorCompare(akinator, ansBuffer);
+        //     continue;
+        // }
+
+        nodeText.setString(ansBuffer);
+        nodeText.setPosition(windowSize * 0.5f + sf::Vector2f(-nodeText.getGlobalBounds().width * 0.5, 0));
+
         if (updateDumpImg) {
             size_t imgNumber = akinatorDump(akinator, akinator->current);
             sprintf(dumpFileName, "logs/img/" AKINATOR_DUMP_IMG_FORMAT "png", imgNumber);
@@ -342,73 +431,44 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             if (!akinatorDumpTexture.loadFromFile(dumpFileName)) {
                 logPrint(L_ZERO, 1, "Can't load img %s\n", dumpFileName);
             }
-            akinatorDumpImg.setScale(sf::Vector2f(1.5, 1.5));
+            akinatorDumpImg.setScale(sf::Vector2f(1.0f, 1.0f));
             akinatorDumpImg.setTexture(akinatorDumpTexture, true);
             logPrint(L_DEBUG, 0, "Loaded img %dx%d\n", akinatorDumpTexture.getSize().x, akinatorDumpTexture.getSize().y);
             updateDumpImg = false;
         }
 
-        if (repeatGameStage) {
-            swprintf(ansBuffer, MAX_LABEL_LEN, PLAY_AGAIN_FORMAT_STR);
-            akinator->current = akinator->root;
-            if (akinator->playerResponse == RESPONSE_SUCCESS_YES) {
-                repeatGameStage = false;
-            } else if (akinator->playerResponse == RESPONSE_SUCCESS_NO) {
-                akinator->isRunning = false;
-                repeatGameStage = false;
-            }
-            akinator->playerResponse = RESPONSE_NO;
-        } else
-            swprintf(ansBuffer, MAX_LABEL_LEN, QUESTION_FORMAT_STR, akinator->current->data);
+        // ttsPrintf(QUESTION_FORMAT_STR, akinator->current->data);
+        // ttsFlush();
+        //akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
 
-        nodeText.setString(ansBuffer);
-        nodeText.setPosition(windowSize * 0.5f + sf::Vector2f(-nodeText.getGlobalBounds().width * 0.5, 0));
+        /*
+        вопрос
+        диалог с добавлением узла
+        продолжить игру
 
+        определение
+        сравнение
+
+        сохранить базу данных (на Event::closed)
+
+
+        */
         window->clear();
         window->draw(currentNodeBox);
         window->draw(nodeText);
         //window->draw(akinatorDumpImg);
         buttonDraw(&buttonYes);
         buttonDraw(&buttonNo);
+        textFormDraw(&form);
         window->display();
-
-        // ttsPrintf(QUESTION_FORMAT_STR, akinator->current->data);
-        // ttsFlush();
-        //akinator->playerResponse = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
-
-        if (akinator->playerResponse == RESPONSE_SUCCESS_DEFINITION) {
-            akinatorGiveDefinition(akinator, ansBuffer);
-            continue;
-        } else if (akinator->playerResponse == RESPONSE_SUCCESS_COMPARE) {
-            akinatorCompare(akinator, ansBuffer);
-            continue;
-        }
-
-        if (akinator->playerResponse == RESPONSE_NO) {
-            continue;
-        }
-        updateDumpImg = true;
-        if (akinator->current->left) {
-            akinatorHandleQuestion(akinator);
-        } else {
-            akinatorHandleLeaf(akinator, ansBuffer);
-            repeatGameStage = true;
-        }
     }
+
     window->close();
     return AKINATOR_SUCCESS;
 }
 
 enum akinatorStatus akinatorDelete(Akinator_t *akinator) {
     treeDump(akinator->root, akinatorSWPrint);
-    wprintf(SAVE_DATA_FORMAT_STR);
-    wchar_t ansBuffer[MAX_LABEL_LEN] = L"";
-
-    enum responseStatus playerAnswer = getPlayerResponse(ansBuffer, REQUEST_YES_NO);
-    if (playerAnswer == RESPONSE_SUCCESS_YES) {
-        if (akinatorSaveDataBase(akinator) != AKINATOR_SUCCESS)
-            return AKINATOR_ERROR;
-    }
 
     akinatorDump(akinator, NULL);
     free(akinator->databaseFile);

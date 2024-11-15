@@ -13,10 +13,13 @@ typedef struct {
     sf::Text label;
 
     bool isPressed;
+    bool visible;
 } Button_t;
 
 void buttonCtor(Button_t *button, sf::RenderWindow *window, sf::Font *font,
                 const wchar_t *label, sf::Vector2f pos, sf::Vector2f size);
+
+void buttonSetVisible(Button_t *button, bool visible);
 
 void buttonUpdate(Button_t *button);
 bool buttonClickEventUpdate(Button_t *button);
