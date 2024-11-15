@@ -21,7 +21,7 @@ int sPrintDouble(void *buffer, const void* a);
 void binTreeTest();
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Akinator");
+    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Akinator", sf::Style::Fullscreen);
     sf::Font font;
     font.loadFromFile("Oswald-VariableFont_wght.ttf");
 

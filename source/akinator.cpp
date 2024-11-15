@@ -402,6 +402,10 @@ static void processEvents(Akinator_t *akinator, enum choiceButtonsState *choiceS
                 }
                 break;
             }
+            case sf::Event::KeyReleased:
+                if (event.key.code == sf::Keyboard::Escape)
+                    akinator->state = STATE_ASK_SAVE_DATABASE;
+                break;
             case sf::Event::TextEntered:
                 textFormUpdate(&gui->inputForm, event.text.unicode);
                 break;
