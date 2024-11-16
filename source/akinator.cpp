@@ -35,7 +35,7 @@ static enum akinatorStatus layoutCtor(GUILayout_t *gui, sf::RenderWindow *window
     gui->window = window;
     gui->font = font;
 
-    if (!gui->bkgMusic.openFromFile("bkgMusic.wav")) {
+    if (!gui->bkgMusic.openFromFile("assets/bkgMusic.wav")) {
         logPrint(L_ZERO, 1, "failed to open bkg music\n");
     }
 
@@ -62,7 +62,7 @@ static enum akinatorStatus layoutCtor(GUILayout_t *gui, sf::RenderWindow *window
     gui->dumpTexture.create(10, 10);
     gui->dumpImg.setTexture(gui->dumpTexture, true);
 
-    gui->backgroundTexture.loadFromFile("background.jpg");
+    gui->backgroundTexture.loadFromFile("assets/background.jpg");
     logPrint(L_DEBUG, 0, "Loaded bkg %dx%d\n", gui->backgroundTexture.getSize().x, gui->backgroundTexture.getSize().y);
     gui->backgroundImg.setTexture(gui->backgroundTexture, true);
     gui->backgroundImg.setOrigin(sf::Vector2f(gui->backgroundTexture.getSize()) * 0.5f);

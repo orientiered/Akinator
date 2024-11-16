@@ -23,7 +23,7 @@ void binTreeTest();
 int main() {
     sf::RenderWindow window(sf::VideoMode(1920, 1080), "Akinator", sf::Style::Fullscreen);
     sf::Font font;
-    font.loadFromFile("Oswald-VariableFont_wght.ttf");
+    font.loadFromFile("assets/NotoSerifTC-VariableFont_wght.ttf");
 
     logOpen("log.txt", L_HTML_MODE);
     setLogLevel(L_EXTRA);

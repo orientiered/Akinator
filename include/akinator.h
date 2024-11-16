@@ -13,16 +13,16 @@ const wchar_t * const NULL_NODE_STRING = L"_null";
 
 const wchar_t * const YES_STRINGS[] = {L"YES", L"Y", L"ДА", L"АГА", L"Конечно", L"Кнчн"};
 const wchar_t * const NO_STRINGS[]  = {L"NO", L"Нет", L"Не", L"Nope", L"N"};
-const wchar_t * const WELCOME_MSG_FORMAT_STR    = L"Привет, я Акинатор. Придумайте какую-нибудь хрень, а я её отгадаю\n";
+const wchar_t * const WELCOME_MSG_FORMAT_STR    = L"Привет, я Акинатор. Придумайте какую-нибудь хрень, а я её отгадаю";
 const wchar_t * const AGREEMENTS_FORMAT_STR     = L"Чтобы согласиться со мной, используйте следующие слова (регистр не важен):";
 const wchar_t * const DISAGREEMENTS_FORMAT_STR  = L"Чтобы не согласиться, используйте следующие слова (регистр не важен):";
-const wchar_t * const QUESTION_FORMAT_STR       = L"Загаданный объект %ls? (Y/n)\n";
-const wchar_t * const ADD_OBJECT_FORMAT_STR     = L"У меня нет идей. Что же вы загадали?\n";
-const wchar_t * const OBJECT_DIFFER_FORMAT_STR  = L"Бро, чем %ls отличается от %ls?\n";
-const wchar_t * const BAD_INPUT_FORMAT_STR      = L"Какой-то неровный базар у тебя. Ответь нормально -_-\n";
+const wchar_t * const QUESTION_FORMAT_STR       = L"Загаданный объект %ls? (Y/n)";
+const wchar_t * const ADD_OBJECT_FORMAT_STR     = L"У меня нет идей. Что же вы загадали?";
+const wchar_t * const OBJECT_DIFFER_FORMAT_STR  = L"Бро, чем %ls отличается от %ls?";
+const wchar_t * const BAD_INPUT_FORMAT_STR      = L"Какой-то неровный базар у тебя. Ответь нормально -_-";
 const wchar_t * const CORRECT_GUESS_FORMAT_STR  = L"Очев\n";
-const wchar_t * const PLAY_AGAIN_FORMAT_STR     = L"Хотите сыграть ещё? (Y/n)\n";
-const wchar_t * const SAVE_DATA_FORMAT_STR      = L"Сохранить прогресс? (Y/n)\n";
+const wchar_t * const PLAY_AGAIN_FORMAT_STR     = L"Хотите сыграть ещё? (Y/n)";
+const wchar_t * const SAVE_DATA_FORMAT_STR      = L"Сохранить прогресс? (Y/n)";
 
 const wchar_t * const YES_BUTTON_LABEL          = L"Да";
 const wchar_t * const  NO_BUTTON_LABEL          = L"Нет";
@@ -30,7 +30,7 @@ const wchar_t * const GIVE_DEFINITION_LABEL     = L"Дать определен�
 const wchar_t * const GIVE_COMPARISON_LABEL     = L"Сравнить объекты";
 const wchar_t * const GIVE_DEFINITION_SCAN_STR  = L" Шо такое \"%l[^\n\"]\"";
 const wchar_t * const COMPARE_SCAN_STR          = L" Сравни%n";
-const wchar_t * const NO_LABEL_FORMAT_STR       = L"Я не знаю, что такое %ls\n";
+const wchar_t * const NO_LABEL_FORMAT_STR       = L"Я не знаю, что такое %ls";
 const wchar_t * const COMPARE_FORMAT_STR        = L"%ls отличается от %ls тем, что ";
 const wchar_t * const COMPARE_SIMILAR_FORMAT_STR= L"\nИх общие черты ";
 
