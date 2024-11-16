@@ -28,6 +28,7 @@ void textFormCtor(TextForm_t *form, sf::RenderWindow *window, sf::Font *font, sf
     form->box.setSize(mapCoords(size, window));
 
     form->label.setFont(*font);
+    form->label.setCharacterSize(52);
     form->label.setFillColor(sf::Color::Black);
     form->label.setOrigin(mapCoords(size * 0.5f, window));
     form->label.setPosition(mapCoords(pos, window));

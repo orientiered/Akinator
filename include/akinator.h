@@ -24,27 +24,15 @@ const wchar_t * const CORRECT_GUESS_FORMAT_STR  = L"Очев\n";
 const wchar_t * const PLAY_AGAIN_FORMAT_STR     = L"Хотите сыграть ещё? (Y/n)\n";
 const wchar_t * const SAVE_DATA_FORMAT_STR      = L"Сохранить прогресс? (Y/n)\n";
 
+const wchar_t * const YES_BUTTON_LABEL          = L"Да";
+const wchar_t * const  NO_BUTTON_LABEL          = L"Нет";
+const wchar_t * const GIVE_DEFINITION_LABEL     = L"Дать определение";
+const wchar_t * const GIVE_COMPARISON_LABEL     = L"Сравнить объекты";
 const wchar_t * const GIVE_DEFINITION_SCAN_STR  = L" Шо такое \"%l[^\n\"]\"";
 const wchar_t * const COMPARE_SCAN_STR          = L" Сравни%n";
 const wchar_t * const NO_LABEL_FORMAT_STR       = L"Я не знаю, что такое %ls\n";
 const wchar_t * const COMPARE_FORMAT_STR        = L"%ls отличается от %ls тем, что ";
 const wchar_t * const COMPARE_SIMILAR_FORMAT_STR= L"\nИх общие черты ";
-
-enum requestType {
-    REQUEST_YES_NO,
-    REQUEST_STRING,
-};
-
-//TODO: i think it's deprecated
-enum responseStatus {
-    RESPONSE_SUCCESS_YES,
-    RESPONSE_SUCCESS_NO,
-    RESPONSE_SUCCESS_STRING,
-    RESPONSE_SUCCESS_DEFINITION,
-    RESPONSE_SUCCESS_COMPARE,
-    RESPONSE_BAD_INPUT,
-    RESPONSE_NO
-};
 
 enum choiceButtonsState {
     CLICKED_YES =  1,
@@ -58,6 +46,7 @@ enum akinatorState {
     STATE_ADD_NEW_QUESTION,
     STATE_ASK_PLAY_AGAIN,
     STATE_ASK_SAVE_DATABASE,
+    STATE_DEF_COMP_MODE,
     STATE_END_EXECUTION
 };
 
@@ -76,8 +65,11 @@ typedef struct {
     Button_t buttonYes;
     Button_t buttonNo;
 
-    Button_t questionBox; ///< Not actually a button, just textbox
-    TextForm_t inputForm;
+    Button_t buttonNextMode;    ///< Changes akinator mode guess->definition->comparison
+
+    Button_t questionBox;       ///< Not actually a button, just textbox
+    TextForm_t inputForm;       ///< Main input Form
+    TextForm_t inputForm_b;     ///< Appears only in comparison mode
 
     sf::Texture dumpTexture;
     sf::Sprite  dumpImg;

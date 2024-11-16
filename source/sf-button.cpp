@@ -24,6 +24,7 @@ void buttonCtor(Button_t *button, sf::RenderWindow *window, sf::Font *font,
     button->box.setFillColor(BUTTON_MAIN_COLOR);
 
     button->label.setFont(*font);
+    button->label.setCharacterSize(52);
     button->label.setString(label);
     button->label.setFillColor(sf::Color::Red);
     // button->label.setOrigin(mapCoords(size * 0.5f, window));
