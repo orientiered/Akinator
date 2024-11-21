@@ -1,0 +1,3 @@
+[submodule "cJson"]
+	path = cJson
+	url = https://github.com/orientiered/cJson.git

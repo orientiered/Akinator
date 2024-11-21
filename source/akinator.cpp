@@ -19,6 +19,8 @@
 #include "utils.h"
 #include "stringStream.h"
 
+#include "jsonParser.h"
+
 #include "cList.h"
 #include "tree.h"
 #include "akinator.h"
@@ -32,6 +34,49 @@ static int akinatorSWPrint(void *buffer, const void *a) {
 static int akinatorStrCmp(const void *a, const void *b) {
     return wcscasecmp((const wchar_t *) a, (const wchar_t *) b);
 }
+
+
+/*============DEFINE MAGIC========================*/
+/*Creating static constants that are loaded from json config*/
+#define DEF_STR_PARAM_(paramName, defaultValue) \
+    static const wchar_t *paramName = defaultValue; \
+    static wchar_t * loaded_##paramName = NULL;
+
+#include "configParams.h"
+
+#undef DEF_STR_PARAM_
+
+static void loadParametersFromConfig(json_t *config) {
+    const char *tempString = NULL;
+
+    #define DEF_STR_PARAM_(paramName, ...)                                              \
+        tempString = *jsonGetString(config, #paramName);                                \
+        if (tempString) {                                                               \
+            logPrint(L_ZERO, 1, "Found string %s = %s\n", #paramName, tempString);      \
+            size_t fullLen = strlen(tempString) + 1;                                    \
+            wchar_t *loadedParam = (wchar_t *) calloc(fullLen, sizeof(wchar_t));        \
+            mbstowcs(loadedParam, tempString, fullLen);                                 \
+            paramName = loadedParam;                                                    \
+            loaded_##paramName = loadedParam;                                           \
+        }
+
+    #include "configParams.h"
+
+    #undef DEF_STR_PARAM_
+}
+
+static void freeLoadedParameters() {
+    #define DEF_STR_PARAM_(paramName, ...)  \
+        if (loaded_##paramName)             \
+            free(loaded_##paramName);
+
+    #include "configParams.h"
+
+    #undef DEF_STR_PARAM_
+}
+
+/*===========END OF DEFINE MAGIC==================*/
+
 
 /// @brief Change state and update layout
 static void akinatorChangeState(Akinator_t *akinator, enum akinatorState state);
@@ -50,7 +95,6 @@ static enum akinatorStatus layoutCtor(GUILayout_t *gui, sf::RenderWindow *window
 
     sf::Vector2f windowSize = sf::Vector2f(window->getSize());
 
-    //TODO: labels should be in constants
     buttonCtor(&gui->buttonYes, window, font, YES_BUTTON_LABEL, sf::Vector2f(0.4f, 0.8f), sf::Vector2f(0.15f, 0.09f));
     buttonCtor(&gui->buttonNo,  window, font, NO_BUTTON_LABEL,  sf::Vector2f(0.6f, 0.8f), sf::Vector2f(0.15f, 0.09f));
 
@@ -77,7 +121,11 @@ static enum akinatorStatus layoutCtor(GUILayout_t *gui, sf::RenderWindow *window
     return AKINATOR_SUCCESS;
 }
 
-enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile, sf::RenderWindow *window, sf::Font *font) {
+enum akinatorStatus akinatorInit(Akinator_t *akinator, json_t *config, const char *dataBaseFile, sf::RenderWindow *window, sf::Font *font) {
+    //loading parameters from json config
+    if (config)
+        loadParametersFromConfig(config);
+
     //TODO: check input parameters
     layoutCtor(&akinator->gui, window, font);
 
@@ -166,7 +214,7 @@ static akinatorStatus printDefinition(objProperty_t *definition, wstringStream_t
 static akinatorStatus akinatorGiveDefinition(Akinator_t *akinator, const wchar_t *ansBuffer) {
     MY_ASSERT(akinator, exit(1));
     MY_ASSERT(ansBuffer, exit(1));
-
+    //! TODO: free created streams somehow
     static wstringStream_t stream = wstringStreamCtor(1024);
     wstringStreamClear(&stream);
 
@@ -193,6 +241,7 @@ static enum akinatorStatus akinatorCompare(Akinator_t *akinator, const wchar_t *
     MY_ASSERT(first, exit(1));
     MY_ASSERT(second, exit(1));
 
+    //! TODO: free created streams somehow
     static wstringStream_t stream = wstringStreamCtor(1024);
     wstringStreamClear(&stream);
 
@@ -553,6 +602,8 @@ enum akinatorStatus akinatorDelete(Akinator_t *akinator) {
     akinatorDump(akinator, NULL);
     free(akinator->databaseFile);
     treeDtor(akinator->root);
+
+    freeLoadedParameters();
 
     return AKINATOR_SUCCESS;
 }

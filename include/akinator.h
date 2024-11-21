@@ -11,24 +11,6 @@ const char * const defaultDatabaseFile = "database.tdf";
 
 const wchar_t * const NULL_NODE_STRING = L"_null";
 
-const wchar_t * const QUESTION_FORMAT_STR       = L"Загаданный объект %ls? (Y/n)";
-const wchar_t * const ADD_OBJECT_FORMAT_STR     = L"У меня нет идей. Что же вы загадали?";
-const wchar_t * const OBJECT_DIFFER_FORMAT_STR  = L"Бро, чем %ls отличается от %ls?";
-const wchar_t * const BAD_INPUT_FORMAT_STR      = L"Какой-то неровный базар у тебя. Ответь нормально -_-";
-const wchar_t * const CORRECT_GUESS_FORMAT_STR  = L"Очев\n";
-const wchar_t * const PLAY_AGAIN_FORMAT_STR     = L"Хотите сыграть ещё? (Y/n)";
-const wchar_t * const SAVE_DATA_FORMAT_STR      = L"Сохранить прогресс? (Y/n)";
-
-const wchar_t * const ENTER_LABELS_FORMAT_STR   = L"Введите названия объектов";
-const wchar_t * const SUBMIT_BUTTON_LABEL       = L"Отправить";
-const wchar_t * const YES_BUTTON_LABEL          = L"Да";
-const wchar_t * const  NO_BUTTON_LABEL          = L"Нет";
-const wchar_t * const GIVE_DEFINITION_LABEL     = L"Дать определение";
-const wchar_t * const GIVE_COMPARISON_LABEL     = L"Сравнить объекты";
-const wchar_t * const NO_LABEL_FORMAT_STR       = L"Я не знаю, что такое %ls";
-const wchar_t * const COMPARE_FORMAT_STR        = L"%ls отличается от %ls тем, что ";
-const wchar_t * const COMPARE_SIMILAR_FORMAT_STR= L"\nИх общие черты ";
-
 enum choiceButtonsState {
     CLICKED_YES =  1,
     CLICKED_NO  = -1,
@@ -86,7 +68,7 @@ typedef struct {
     node_t *current;
 } Akinator_t;
 
-enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile, sf::RenderWindow *window, sf::Font *font);
+enum akinatorStatus akinatorInit(Akinator_t *akinator, json_t *config, const char *dataBaseFile, sf::RenderWindow *window, sf::Font *font);
 enum akinatorStatus akinatorPlay(Akinator_t *akinator);
 enum akinatorStatus akinatorDelete(Akinator_t *akinator);
 size_t akinatorDump(Akinator_t *akinator, node_t *highlight);

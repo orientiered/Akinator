@@ -9,6 +9,8 @@
 #include "sf-button.h"
 #include "sf-textform.h"
 
+#include "jsonParser.h"
+
 #include "logger.h"
 #include "tree.h"
 #include "akinator.h"

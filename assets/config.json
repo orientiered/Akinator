@@ -1,0 +1,19 @@
+{
+    "QUESTION_FORMAT_STR"       : "Загаданный объект %ls? (Y/n)",
+    "ADD_OBJECT_FORMAT_STR"     : "У меня нет идей. Что же вы загадали?",
+    "OBJECT_DIFFER_FORMAT_STR"  : "Бро, чем %ls отличается от %ls?",
+    "BAD_INPUT_FORMAT_STR"      : "Какой-то неровный базар у тебя. Ответь нормально -_-",
+    "CORRECT_GUESS_FORMAT_STR"  : "Очев\n",
+    "PLAY_AGAIN_FORMAT_STR"     : "Хотите сыграть ещё? (Y/n)",
+    "SAVE_DATA_FORMAT_STR"      : "Сохранить прогресс? (Y/n)",
+
+    "ENTER_LABELS_FORMAT_STR"   : "Введите названия объектов",
+    "SUBMIT_BUTTON_LABEL"       : "Отправить",
+    "YES_BUTTON_LABEL"          : "Да",
+    "NO_BUTTON_LABEL"           : "Нет",
+    "GIVE_DEFINITION_LABEL"     : "Дать определение",
+    "GIVE_COMPARISON_LABEL"     : "Сравнить объекты",
+    "NO_LABEL_FORMAT_STR"       : "Я не знаю, что такое %ls",
+    "COMPARE_FORMAT_STR"        : "%ls отличается от %ls тем, что ",
+    "COMPARE_SIMILAR_FORMAT_STR": "\nИх общие черты "
+}

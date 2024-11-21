@@ -13,6 +13,8 @@
 #include "logger.h"
 #include "tree.h"
 
+#include "jsonParser.h"
+
 #include "akinator.h"
 #include "tts.h"
 
@@ -21,6 +23,8 @@ int sPrintDouble(void *buffer, const void* a);
 void binTreeTest();
 
 int main() {
+    json_t *config = jsonParseFromFile("assets/config.json", NULL);
+
     sf::RenderWindow window(sf::VideoMode(1920, 1080), "Akinator", sf::Style::Fullscreen);
     sf::Font font;
     font.loadFromFile("assets/NotoSerifTC-VariableFont_wght.ttf");
@@ -29,11 +33,12 @@ int main() {
     setLogLevel(L_EXTRA);
     logDisableBuffering();
     Akinator_t akinator = {};
-    if (akinatorInit(&akinator, "dataBase.tdf", &window, &font) != AKINATOR_SUCCESS)
+    if (akinatorInit(&akinator, config, "dataBase.tdf", &window, &font) != AKINATOR_SUCCESS)
         return 1;
     akinatorPlay(&akinator);
     akinatorDelete(&akinator);
 
+    jsonDtor(config);
     logClose();
     return 0;
 }

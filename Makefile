@@ -35,8 +35,9 @@ endif
 #Name of compiled executable
 NAME := ./akin.out
 #Name of directory with headers
-INCLUDEDIRS := include global/include containers/include
-LINK_LIBS	:= sfml-graphics sfml-window sfml-audio sfml-system
+INCLUDEDIRS := include global/include containers/include cJson/include
+
+LINK_LIBS	:= sfml-graphics sfml-window sfml-audio sfml-system jsonParser
 
 GLOBAL_SRCS     := $(addprefix global/source/, argvProcessor.cpp logger.cpp utils.cpp)
 GLOBAL_OBJS     := $(subst source,$(OBJDIR), $(GLOBAL_SRCS:%.cpp=%.o))
@@ -51,7 +52,7 @@ LOCAL_OBJS      := $(subst source,$(OBJDIR), $(LOCAL_SRCS:%.cpp=%.o))
 LOCAL_DEPS      := $(LOCAL_OBJS:%.o=%.d)
 
 #flag to tell compiler where headers are located
-override CFLAGS += $(addprefix -I./,$(INCLUDEDIRS))
+override CFLAGS += $(addprefix -I./,$(INCLUDEDIRS)) -L./cJson/build/
 #Main target to compile executables
 #Filtering other mains from objects
 $(NAME): $(GLOBAL_OBJS) $(LOCAL_OBJS) $(CONTAINER_OBJS)
