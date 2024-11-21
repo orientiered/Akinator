@@ -4,6 +4,10 @@
 const size_t MAX_INPUT_LEN = 63;
 const wchar_t BACKSPACE_SYMBOL = 8;
 
+//outline colors
+const sf::Color TEXTFORM_MAIN_COLOR(0xEEEEEEFF);
+const sf::Color TEXTFORM_SELECTED_COLOR(0x000000FF);
+
 typedef struct {
     sf::RenderWindow *window;
     sf::RectangleShape box;

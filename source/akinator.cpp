@@ -31,6 +31,9 @@ static int akinatorStrCmp(const void *a, const void *b) {
     return wcscasecmp((const wchar_t *) a, (const wchar_t *) b);
 }
 
+/// @brief Change state and update layout
+static void akinatorChangeState(Akinator_t *akinator, enum akinatorState state);
+
 static enum akinatorStatus layoutCtor(GUILayout_t *gui, sf::RenderWindow *window, sf::Font *font) {
     gui->window = window;
     gui->font = font;
@@ -109,6 +112,9 @@ enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile,
     fclose(dataBase);
 
     if (getLogLevel() >= L_DEBUG) treeDump(akinator->root, akinatorSWPrint);
+
+    akinatorChangeState(akinator, STATE_QUESTION);
+
     return AKINATOR_SUCCESS;
 }
 
@@ -119,44 +125,6 @@ static bool matchAnyCaseString(const wchar_t *const word, const wchar_t * const 
     }
     return false;
 }
-
-// static enum responseStatus getPlayerResponse(wchar_t *ansBuffer, enum requestType type) {
-//     enum responseStatus playerAnswer = RESPONSE_NO;
-//     while (playerAnswer == RESPONSE_BAD_INPUT || playerAnswer == RESPONSE_NO) {
-//         if (playerAnswer == RESPONSE_BAD_INPUT) {
-//             ttsPrintf(BAD_INPUT_FORMAT_STR);
-//             ttsFlush();
-//         }
-//
-//         size_t scannedChars = 0;
-//         if (wscanf(GIVE_DEFINITION_SCAN_STR, ansBuffer) == 1) {
-//             return RESPONSE_SUCCESS_DEFINITION;
-//         } else if (wscanf(COMPARE_SCAN_STR, &scannedChars) >= 0 && scannedChars > 0) {
-//             return RESPONSE_SUCCESS_COMPARE;
-//         }
-//
-//         fwscanf(stdin, L" %l[^\n]", ansBuffer);
-//
-//         switch(type) {
-//         case REQUEST_YES_NO:
-//             if (matchAnyCaseString(ansBuffer, YES_STRINGS, ARRAY_SIZE(YES_STRINGS)))
-//                 playerAnswer = RESPONSE_SUCCESS_YES;
-//             else if (matchAnyCaseString(ansBuffer, NO_STRINGS, ARRAY_SIZE(NO_STRINGS)))
-//                 playerAnswer = RESPONSE_SUCCESS_NO;
-//             else playerAnswer = RESPONSE_BAD_INPUT;
-//             break;
-//         case REQUEST_STRING:
-//             //TODO: check if 'no' is in string
-//             playerAnswer = RESPONSE_SUCCESS_STRING;
-//             break;
-//         default:
-//             //MAYBE NOT 1
-//             exit(1);
-//             break;
-//         }
-//     }
-//     return playerAnswer;
-// }
 
 static akinatorStatus akinatorWelcomeMessage() {
     ttsPrintf(WELCOME_MSG_FORMAT_STR);
@@ -290,18 +258,17 @@ static enum akinatorStatus akinatorHandleQuestion(Akinator_t *akinator, enum cho
 
 	akinator->previous = akinator->current;
 	akinator->current = (choice == CLICKED_YES) ? akinator->current->left  : akinator->current->right;
-    if (akinator->current == NULL) {
-        if (choice == CLICKED_YES) {
-            akinator->state = STATE_ASK_PLAY_AGAIN;
-        } else {
-            akinator->state = STATE_ADD_NEW_OBJECT;
-            textFormSetVisible(&akinator->gui.inputForm, true);
-        }
-    }
+    if (akinator->current)
+        akinatorChangeState(akinator, STATE_QUESTION); //updating label
+    //NULL node
+    else if (choice == CLICKED_YES) //Right guess
+        akinatorChangeState(akinator, STATE_ASK_PLAY_AGAIN);
+    else //add new object, wrong guess
+        akinatorChangeState(akinator, STATE_ADD_NEW_OBJECT);
     return AKINATOR_SUCCESS;
 }
 
-static enum akinatorStatus akinatorHandleNewObject(Akinator_t *akinator, wchar_t *ansBuffer, enum choiceButtonsState choice) {
+static enum akinatorStatus akinatorHandleNewObject(Akinator_t *akinator, enum choiceButtonsState choice) {
     if (akinator->current != NULL || akinator->previous == NULL) {
         LOG_PRINT(L_ZERO, 1, "Current node can't be new object\n");
         return AKINATOR_ERROR;
@@ -309,21 +276,22 @@ static enum akinatorStatus akinatorHandleNewObject(Akinator_t *akinator, wchar_t
 
     if (choice == NOT_CLICKED) return AKINATOR_SUCCESS;
 
+    //do nothing when nothing is entered
+    if ( wcslen( textFormGetText(&akinator->gui.inputForm) ) == 0)
+        return AKINATOR_SUCCESS;
+
     logPrint(L_DEBUG, 0, "Handle new object: state = %d, choice = %d\n", akinator->state, choice);
     if (akinator->state == STATE_ADD_NEW_OBJECT) {
         treeAdd(akinator->previous, textFormGetText(&akinator->gui.inputForm), 0);
         treeAdd(akinator->previous, akinator->previous->data, 1);
-        akinator->state = STATE_ADD_NEW_QUESTION;
-        textFormClear(&akinator->gui.inputForm);
+        akinatorChangeState(akinator, STATE_ADD_NEW_QUESTION);
 
         return AKINATOR_SUCCESS;
     }
 
     if (akinator->state == STATE_ADD_NEW_QUESTION) {
         wcscpy((wchar_t*)(akinator->previous->data), textFormGetText(&akinator->gui.inputForm));
-        akinator->state = STATE_ASK_PLAY_AGAIN;
-        textFormSetVisible(&akinator->gui.inputForm, false);
-        textFormClear(&akinator->gui.inputForm);
+        akinatorChangeState(akinator, STATE_ASK_PLAY_AGAIN);
 
         return AKINATOR_SUCCESS;
     }
@@ -338,12 +306,12 @@ static enum akinatorStatus akinatorHandlePlayAgain(Akinator_t *akinator, enum ch
     if (choice == CLICKED_YES) {
         akinator->current = akinator->root;
         akinator->previous = NULL;
-        akinator->state = STATE_QUESTION;
+        akinatorChangeState(akinator, STATE_QUESTION);
         return AKINATOR_SUCCESS;
     }
 
     if (choice == CLICKED_NO) {
-        akinator->state = STATE_ASK_SAVE_DATABASE;
+        akinatorChangeState(akinator, STATE_ASK_SAVE_DATABASE);
         return AKINATOR_SUCCESS;
     }
 
@@ -354,16 +322,15 @@ static enum akinatorStatus akinatorHandleSaveDatabase(Akinator_t *akinator, enum
     if (choice == NOT_CLICKED)
         return AKINATOR_SUCCESS;
 
-    if (choice == CLICKED_NO) {
-        akinator->state = STATE_END_EXECUTION;
-        return AKINATOR_SUCCESS;
-    }
 
-    if (choice == CLICKED_YES) {
-        akinator->state = STATE_END_EXECUTION;
+    akinatorChangeState(akinator, STATE_END_EXECUTION);
+    if (choice == CLICKED_NO) {
+        return AKINATOR_SUCCESS;
+    } else if (choice == CLICKED_YES) {
         return akinatorSaveDataBase(akinator);
     }
 
+    //unknown choice
     return AKINATOR_ERROR;
 }
 
@@ -371,21 +338,9 @@ static void akinatorHandleModeChange(Akinator_t *akinator) {
     static enum akinatorState previousState = STATE_QUESTION;
     if (akinator->state == STATE_QUESTION || akinator->state == STATE_ASK_PLAY_AGAIN) {
         previousState = akinator->state;
-        akinator->state = STATE_DEF_COMP_MODE;
-        buttonSetLabel(&akinator->gui.buttonYes, GIVE_DEFINITION_LABEL);
-        buttonSetLabel(&akinator->gui.buttonNo,  GIVE_COMPARISON_LABEL);
-        textFormSetVisible(&akinator->gui.inputForm, true);
-        textFormSetVisible(&akinator->gui.inputForm_b, true);
-
+        akinatorChangeState(akinator, STATE_DEF_COMP_MODE);
     } else if (akinator->state == STATE_DEF_COMP_MODE) {
-        akinator->state = previousState;
-        buttonSetLabel(&akinator->gui.buttonYes, YES_BUTTON_LABEL);
-        buttonSetLabel(&akinator->gui.buttonNo,   NO_BUTTON_LABEL);
-        textFormSetVisible(&akinator->gui.inputForm, false);
-        textFormSetVisible(&akinator->gui.inputForm_b, false);
-        textFormClear(&akinator->gui.inputForm);
-        textFormClear(&akinator->gui.inputForm_b);
-
+        akinatorChangeState(akinator, previousState);
     } else {
         return;
     }
@@ -394,10 +349,14 @@ static void akinatorHandleModeChange(Akinator_t *akinator) {
 static void akinatorHandleDefComp(Akinator_t *akinator, enum choiceButtonsState choice) {
     if (choice == NOT_CLICKED) return;
 
+    //do nothing when nothing is entered
+    if ( akinator->gui.inputForm.inputSize == 0)
+        return;
+
     //definition
     if (choice == CLICKED_YES) {
         akinatorGiveDefinition(akinator, textFormGetText(&akinator->gui.inputForm));
-    } else if (choice == CLICKED_NO) {//comparison
+    } else if (choice == CLICKED_NO && akinator->gui.inputForm_b.inputSize > 0) {//comparison
         akinatorCompare(akinator, textFormGetText(&akinator->gui.inputForm), textFormGetText(&akinator->gui.inputForm_b));
     }
 }
@@ -417,6 +376,81 @@ static void layoutDraw(GUILayout_t *gui) {
     window->display();
 }
 
+static void akinatorChangeState(Akinator_t *akinator, enum akinatorState state) {
+    wchar_t labelBuffer[MAX_LABEL_LEN] = L"";
+
+    switch (state) {
+        case STATE_QUESTION:
+            buttonSetLabel(&akinator->gui.buttonYes, YES_BUTTON_LABEL);
+            buttonSetLabel(&akinator->gui.buttonNo,   NO_BUTTON_LABEL);
+
+            swprintf(labelBuffer, MAX_LABEL_LEN, QUESTION_FORMAT_STR, akinator->current->data);
+            buttonSetLabel(&akinator->gui.questionBox, labelBuffer);
+
+            textFormSetVisible(&akinator->gui.inputForm, false);
+            textFormSetVisible(&akinator->gui.inputForm_b, false);
+            break;
+        case STATE_ADD_NEW_OBJECT:
+            buttonSetLabel(&akinator->gui.buttonYes, SUBMIT_BUTTON_LABEL);
+            buttonSetLabel(&akinator->gui.buttonNo,  SUBMIT_BUTTON_LABEL);
+
+            textFormSetVisible(&akinator->gui.inputForm, true);
+            textFormClear(&akinator->gui.inputForm);
+
+            swprintf(labelBuffer, MAX_LABEL_LEN, ADD_OBJECT_FORMAT_STR);
+            buttonSetLabel(&akinator->gui.questionBox, labelBuffer);
+
+            break;
+        case STATE_ADD_NEW_QUESTION:
+            buttonSetLabel(&akinator->gui.buttonYes, SUBMIT_BUTTON_LABEL);
+            buttonSetLabel(&akinator->gui.buttonNo,  SUBMIT_BUTTON_LABEL);
+
+            textFormSetVisible(&akinator->gui.inputForm, true);
+            textFormClear(&akinator->gui.inputForm);
+
+            swprintf(labelBuffer, MAX_LABEL_LEN, OBJECT_DIFFER_FORMAT_STR, akinator->previous->left->data, akinator->previous->right->data );
+            buttonSetLabel(&akinator->gui.questionBox, labelBuffer);
+            break;
+        case STATE_ASK_PLAY_AGAIN:
+            buttonSetLabel(&akinator->gui.buttonYes, YES_BUTTON_LABEL);
+            buttonSetLabel(&akinator->gui.buttonNo,   NO_BUTTON_LABEL);
+            swprintf(labelBuffer, MAX_LABEL_LEN, PLAY_AGAIN_FORMAT_STR);
+            buttonSetLabel(&akinator->gui.questionBox, labelBuffer);
+
+            textFormSetVisible(&akinator->gui.inputForm, false);
+            textFormSetVisible(&akinator->gui.inputForm_b, false);
+
+            break;
+        case STATE_ASK_SAVE_DATABASE:
+            buttonSetLabel(&akinator->gui.buttonYes, YES_BUTTON_LABEL);
+            buttonSetLabel(&akinator->gui.buttonNo,   NO_BUTTON_LABEL);
+            swprintf(labelBuffer, MAX_LABEL_LEN, SAVE_DATA_FORMAT_STR);
+            buttonSetLabel(&akinator->gui.questionBox, labelBuffer);
+
+            textFormSetVisible(&akinator->gui.inputForm, false);
+            textFormSetVisible(&akinator->gui.inputForm_b, false);
+            break;
+
+        case STATE_DEF_COMP_MODE:
+            buttonSetLabel(&akinator->gui.buttonYes, GIVE_DEFINITION_LABEL);
+            buttonSetLabel(&akinator->gui.buttonNo,  GIVE_COMPARISON_LABEL);
+
+            textFormSetVisible(&akinator->gui.inputForm, true);
+            textFormSetVisible(&akinator->gui.inputForm_b, true);
+            textFormClear(&akinator->gui.inputForm);
+            textFormClear(&akinator->gui.inputForm_b);
+            break;
+
+        case STATE_END_EXECUTION:
+            break;
+        default:
+            LOG_PRINT(L_ZERO, 0, "Unknown state passed: %d\n", state);
+            break;
+    }
+
+    akinator->state = state;
+}
+
 static void processEvents(Akinator_t *akinator, enum choiceButtonsState *choiceState) {
     sf::Event event;
     GUILayout_t *gui = &akinator->gui;
@@ -424,7 +458,7 @@ static void processEvents(Akinator_t *akinator, enum choiceButtonsState *choiceS
         switch(event.type) {
             case sf::Event::Closed:
             {
-                akinator->state = STATE_ASK_SAVE_DATABASE;
+                akinatorChangeState(akinator, STATE_ASK_SAVE_DATABASE);
                 break;
             }
             case sf::Event::MouseButtonPressed:
@@ -443,8 +477,9 @@ static void processEvents(Akinator_t *akinator, enum choiceButtonsState *choiceS
                 break;
             }
             case sf::Event::KeyReleased:
-                if (event.key.code == sf::Keyboard::Escape)
-                    akinator->state = STATE_ASK_SAVE_DATABASE;
+                if (event.key.code == sf::Keyboard::Escape) {
+                    akinatorChangeState(akinator, STATE_ASK_SAVE_DATABASE);
+                }
                 break;
             case sf::Event::TextEntered:
                 textFormUpdate(&gui->inputForm, event.text.unicode);
@@ -460,15 +495,16 @@ static void processEvents(Akinator_t *akinator, enum choiceButtonsState *choiceS
 enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
     MY_ASSERT(akinator, exit(1));
 
-    wchar_t ansBuffer[AKINATOR_BUFFER_SIZE] = L"";
-    akinatorWelcomeMessage();
-
-    char dumpFileName[64] = "";
-    bool updateDumpImg = true;
+//     wchar_t ansBuffer[AKINATOR_BUFFER_SIZE] = L"";
+//     akinatorWelcomeMessage();
+//
+//     char dumpFileName[64] = "";
+//     bool updateDumpImg = true;
 
     enum choiceButtonsState choiceState = NOT_CLICKED;
     while (akinator->isRunning) {
 
+        //TODO: layoutUpdate(&akinator->gui);
         buttonUpdate(&akinator->gui.buttonYes);
         buttonUpdate(&akinator->gui.buttonNo);
         buttonUpdate(&akinator->gui.buttonNextMode);
@@ -481,23 +517,18 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             akinatorHandleDefComp(akinator, choiceState);
             break;
         case STATE_QUESTION:
-            swprintf(ansBuffer, MAX_LABEL_LEN, QUESTION_FORMAT_STR, akinator->current->data);
             akinatorHandleQuestion(akinator, choiceState);
             break;
         case STATE_ADD_NEW_OBJECT:
-            akinatorHandleNewObject(akinator, ansBuffer, choiceState);
-            swprintf(ansBuffer, MAX_LABEL_LEN, ADD_OBJECT_FORMAT_STR);
+            akinatorHandleNewObject(akinator, choiceState);
             break;
         case STATE_ADD_NEW_QUESTION:
-            akinatorHandleNewObject(akinator, ansBuffer, choiceState);
-            swprintf(ansBuffer, MAX_LABEL_LEN, OBJECT_DIFFER_FORMAT_STR, akinator->previous->left->data, akinator->previous->right->data );
+            akinatorHandleNewObject(akinator, choiceState);
             break;
         case STATE_ASK_PLAY_AGAIN:
-            swprintf(ansBuffer, MAX_LABEL_LEN, PLAY_AGAIN_FORMAT_STR);
             akinatorHandlePlayAgain(akinator, choiceState);
             break;
         case STATE_ASK_SAVE_DATABASE:
-            swprintf(ansBuffer, MAX_LABEL_LEN, SAVE_DATA_FORMAT_STR);
             akinatorHandleSaveDatabase(akinator, choiceState);
             break;
         case STATE_END_EXECUTION:
@@ -505,16 +536,6 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             akinator->isRunning = false;
             break;
         }
-
-        // if (akinator->playerResponse == RESPONSE_SUCCESS_DEFINITION) {
-        //     akinatorGiveDefinition(akinator, ansBuffer);
-        //     continue;
-        // } else if (akinator->playerResponse == RESPONSE_SUCCESS_COMPARE) {
-        //     akinatorCompare(akinator, ansBuffer);
-        //     continue;
-        // }
-
-        buttonSetLabel(&akinator->gui.questionBox, ansBuffer);
 
         /*if (updateDumpImg) {
             size_t imgNumber = akinatorDump(akinator, akinator->current);
@@ -529,19 +550,6 @@ enum akinatorStatus akinatorPlay(Akinator_t *akinator) {
             updateDumpImg = false;
         }*/
 
-
-        /*
-        вопрос
-        диалог с добавлением узла
-        продолжить игру
-
-        определение
-        сравнение
-
-        сохранить базу данных (на Event::closed)
-
-
-        */
         layoutDraw(&akinator->gui);
     }
 
@@ -613,14 +621,14 @@ size_t akinatorDump(Akinator_t *akinator, node_t *highlight) {
     fclose(dotFile);
 
     const char *extension = "svg";
-    sprintf(buffer, "dot logs/dot/"AKINATOR_DUMP_DOT_FORMAT" -T%s -o logs/img/"AKINATOR_DUMP_IMG_FORMAT"%s",
+    sprintf(buffer, "dot logs/dot/" AKINATOR_DUMP_DOT_FORMAT " -T%s -o logs/img/" AKINATOR_DUMP_IMG_FORMAT "%s",
                                         dumpCounter,        extension,            dumpCounter,      extension);
     system(buffer);
     logPrint(L_ZERO, 0, "<img src=\"img/" AKINATOR_DUMP_IMG_FORMAT "%s\" width=76%%>\n<hr>\n",
                                             dumpCounter,         extension);
 
     extension = "png";
-    sprintf(buffer, "dot logs/dot/"AKINATOR_DUMP_DOT_FORMAT" -T%s -o logs/img/"AKINATOR_DUMP_IMG_FORMAT"%s",
+    sprintf(buffer, "dot logs/dot/" AKINATOR_DUMP_DOT_FORMAT " -T%s -o logs/img/" AKINATOR_DUMP_IMG_FORMAT "%s",
                                         dumpCounter,        extension,            dumpCounter,      extension);
     system(buffer);
 

@@ -7,6 +7,7 @@ const sf::Color BUTTON_MAIN_COLOR   (0xFFFFFF55);
 const sf::Color BUTTON_HOVER_COLOR  (0xEEEEEE55);
 const sf::Color BUTTON_PRESSED_COLOR(0x88888855);
 
+const unsigned BUTTON_MAX_FONT_SIZE = 100;
 typedef struct {
     sf::RenderWindow *window;
     sf::RectangleShape box;

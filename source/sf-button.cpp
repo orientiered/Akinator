@@ -14,6 +14,26 @@ static sf::Vector2f mapCoords(sf::Vector2f coords, const sf::RenderWindow *windo
     return sf::Vector2f(coords.x * windowSize.x, coords.y * windowSize.y);
 }
 
+/// @brief Center text in the box and set max font that fits inside it
+/// @return Size of selected font
+static unsigned fitTextToBox(sf::Text *text, const sf::RectangleShape *box, unsigned maxFontSize) {
+    unsigned currentFontSize = maxFontSize + 1;
+    sf::Vector2f textSize = {0, 0};
+
+    do {
+        currentFontSize--;
+        text->setCharacterSize(currentFontSize);
+        textSize.x = text->getGlobalBounds().width;
+        textSize.y = text->getGlobalBounds().height;
+    } while (textSize.x > box->getSize().x || textSize.y > box->getSize().y);
+
+    // origin of box is it's center
+    sf::Vector2f boxCenter = box->getPosition();
+    text->setPosition(boxCenter - textSize * 0.5f);
+
+    return currentFontSize;
+}
+
 void buttonCtor(Button_t *button, sf::RenderWindow *window, sf::Font *font,
                 const wchar_t *label, sf::Vector2f pos, sf::Vector2f size) {
     button->window = window;
@@ -24,13 +44,12 @@ void buttonCtor(Button_t *button, sf::RenderWindow *window, sf::Font *font,
     button->box.setFillColor(BUTTON_MAIN_COLOR);
 
     button->label.setFont(*font);
-    button->label.setCharacterSize(52);
+    button->label.setCharacterSize(100);
     button->label.setString(label);
     button->label.setStyle(sf::Text::Bold);
     button->label.setFillColor(sf::Color(0xFFFF00FF));
     // button->label.setOrigin(mapCoords(size * 0.5f, window));
-    sf::Vector2f textSize = {button->label.getGlobalBounds().width, button->label.getGlobalBounds().height};
-    button->label.setPosition(mapCoords(pos, window) - textSize * 0.5f);
+    fitTextToBox(&button->label, &button->box, BUTTON_MAX_FONT_SIZE);
 
     button->visible = true;
 }
@@ -43,9 +62,7 @@ void buttonSetVisible(Button_t *button, bool visible) {
 
 void buttonSetLabel(Button_t *button, const wchar_t *label) {
     button->label.setString(label);
-    sf::Vector2f textSize = {button->label.getGlobalBounds().width, button->label.getGlobalBounds().height};
-    sf::Vector2f centerPos = button->box.getPosition();
-    button->label.setPosition(centerPos - textSize * 0.5f);
+    fitTextToBox(&button->label, &button->box, BUTTON_MAX_FONT_SIZE);
 }
 
 void buttonUpdate(Button_t *button) {

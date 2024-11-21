@@ -24,6 +24,7 @@ const wchar_t * const CORRECT_GUESS_FORMAT_STR  = L"Очев\n";
 const wchar_t * const PLAY_AGAIN_FORMAT_STR     = L"Хотите сыграть ещё? (Y/n)";
 const wchar_t * const SAVE_DATA_FORMAT_STR      = L"Сохранить прогресс? (Y/n)";
 
+const wchar_t * const SUBMIT_BUTTON_LABEL       = L"Отправить";
 const wchar_t * const YES_BUTTON_LABEL          = L"Да";
 const wchar_t * const  NO_BUTTON_LABEL          = L"Нет";
 const wchar_t * const GIVE_DEFINITION_LABEL     = L"Дать определение";
@@ -67,7 +68,7 @@ typedef struct {
 
     Button_t buttonNextMode;    ///< Changes akinator mode guess->definition->comparison
 
-    Button_t questionBox;       ///< Not actually a button, just textbox
+    Button_t questionBox;       ///< Not actually a button, just textbox where all question are written
     TextForm_t inputForm;       ///< Main input Form
     TextForm_t inputForm_b;     ///< Appears only in comparison mode
 

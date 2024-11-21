@@ -26,10 +26,11 @@ void textFormCtor(TextForm_t *form, sf::RenderWindow *window, sf::Font *font, sf
     form->box.setOrigin(mapCoords(size * 0.5f, window));
     form->box.setPosition(mapCoords(pos, window));
     form->box.setSize(mapCoords(size, window));
+    form->box.setOutlineThickness(5);
 
     form->label.setFont(*font);
     form->label.setCharacterSize(52);
-    form->label.setFillColor(sf::Color::Black);
+    form->label.setFillColor(sf::Color(0x000000FF));
     form->label.setOrigin(mapCoords(size * 0.5f, window));
     form->label.setPosition(mapCoords(pos, window));
 
@@ -80,8 +81,10 @@ void textFormClickEventUpdate(TextForm_t *form) {
 
     if (form->isSelected && !mouseInBox) {
         form->isSelected = false;
+        form->box.setOutlineColor(TEXTFORM_MAIN_COLOR);
     } else if (!form->isSelected && mouseInBox) {
         form->isSelected = true;
+        form->box.setOutlineColor(TEXTFORM_SELECTED_COLOR);
     }
 }
 
