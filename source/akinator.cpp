@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
@@ -16,6 +17,7 @@
 
 #include "logger.h"
 #include "utils.h"
+#include "stringStream.h"
 
 #include "cList.h"
 #include "tree.h"
@@ -118,30 +120,6 @@ enum akinatorStatus akinatorInit(Akinator_t *akinator, const char *dataBaseFile,
     return AKINATOR_SUCCESS;
 }
 
-static bool matchAnyCaseString(const wchar_t *const word, const wchar_t * const *words, size_t wordsLen) {
-    for (size_t idx = 0; idx < wordsLen; idx++) {
-        if (wcscasecmp(word, words[idx]) == 0)
-            return true;
-    }
-    return false;
-}
-
-static akinatorStatus akinatorWelcomeMessage() {
-    ttsPrintf(WELCOME_MSG_FORMAT_STR);
-    ttsFlush();
-    wprintf(AGREEMENTS_FORMAT_STR);
-    for (size_t idx = 0; idx < sizeof(YES_STRINGS) / sizeof(wchar_t *); idx++)
-        wprintf(L"%ls ", YES_STRINGS[idx]);
-    wprintf(L"\n");
-
-    wprintf(DISAGREEMENTS_FORMAT_STR);
-    for (size_t idx = 0; idx < sizeof(NO_STRINGS) / sizeof(wchar_t *); idx++)
-        wprintf(L"%ls ", NO_STRINGS[idx]);
-    wprintf(L"\n");
-
-    return AKINATOR_SUCCESS;
-}
-
 /*============DEFINITION AND COMPARISON OF OBJECTS=========================*/
 typedef struct {
     wchar_t label[MAX_LABEL_LEN];
@@ -173,33 +151,40 @@ static objProperty_t *createDefinition(Akinator_t *akinator, node_t *object) {
     return definition;
 }
 
-static akinatorStatus printDefinition(objProperty_t *definition) {
+static akinatorStatus printDefinition(objProperty_t *definition, wstringStream_t *stream) {
     MY_ASSERT(definition, exit(1));
     for (size_t idx = 0; definition[idx].label[0]; idx++) {
         if (definition[idx].negative)
-            ttsPrintf(L"не ");
-        ttsPrintf(L"%ls", definition[idx].label);
+            wstringStreamPrintf(stream, L"не ");
+        wstringStreamPrintf(stream, L"%ls", definition[idx].label);
         if (definition[idx+1].label[0])
-            ttsPrintf(L", ");
+            wstringStreamPrintf(stream, L", ");
     }
     return AKINATOR_SUCCESS;
 }
 
 static akinatorStatus akinatorGiveDefinition(Akinator_t *akinator, const wchar_t *ansBuffer) {
+    MY_ASSERT(akinator, exit(1));
+    MY_ASSERT(ansBuffer, exit(1));
+
+    static wstringStream_t stream = wstringStreamCtor(1024);
+    wstringStreamClear(&stream);
+
     node_t *label = treeFind(akinator->root, ansBuffer, akinatorStrCmp);
     if (!label) {
-        ttsPrintf(NO_LABEL_FORMAT_STR, ansBuffer);
-        ttsFlush();
+        wstringStreamPrintf(&stream, NO_LABEL_FORMAT_STR, ansBuffer);
+        buttonSetLabel(&akinator->gui.questionBox, stream.buffer);
         return AKINATOR_SUCCESS;
     }
 
     objProperty_t *definition = createDefinition(akinator, label);
-    ttsPrintf(L"%ls это ", label->data);
-    printDefinition(definition);
+    wstringStreamPrintf(&stream, L"%ls это ", label->data);
+    printDefinition(definition, &stream);
 
     free(definition);
-    ttsPrintf(L"\n");
-    ttsFlush();
+    wstringStreamPrintf(&stream, L"\n");
+    buttonSetLabel(&akinator->gui.questionBox, stream.buffer);
+
     return AKINATOR_SUCCESS;
 }
 
@@ -208,14 +193,19 @@ static enum akinatorStatus akinatorCompare(Akinator_t *akinator, const wchar_t *
     MY_ASSERT(first, exit(1));
     MY_ASSERT(second, exit(1));
 
+    static wstringStream_t stream = wstringStreamCtor(1024);
+    wstringStreamClear(&stream);
+
     node_t *firstLabel = treeFind(akinator->root, first, akinatorStrCmp);
     if (!firstLabel) {
-        wprintf(NO_LABEL_FORMAT_STR, first);
+        wstringStreamPrintf(&stream, NO_LABEL_FORMAT_STR, first);
+        buttonSetLabel(&akinator->gui.questionBox, stream.buffer);
         return AKINATOR_SUCCESS;
     }
     node_t *secondLabel = treeFind(akinator->root, second, akinatorStrCmp);
     if (!secondLabel) {
-        wprintf(NO_LABEL_FORMAT_STR, second);
+        wstringStreamPrintf(&stream, NO_LABEL_FORMAT_STR, second);
+        buttonSetLabel(&akinator->gui.questionBox, stream.buffer);
         return AKINATOR_SUCCESS;
     }
 
@@ -225,21 +215,20 @@ static enum akinatorStatus akinatorCompare(Akinator_t *akinator, const wchar_t *
     while (firstDef[idx].label[0] && isEqualObjProperty(firstDef + idx, secondDef + idx))
         idx++;
 
-    ttsPrintf(COMPARE_FORMAT_STR, firstLabel->data, secondLabel->data);
-    ttsPrintf(L"%ls ", firstLabel->data);
-    printDefinition(firstDef + idx);
+    wstringStreamPrintf(&stream, COMPARE_FORMAT_STR, firstLabel->data, secondLabel->data);
+    wstringStreamPrintf(&stream, L"%ls ", firstLabel->data);
+    printDefinition(firstDef + idx, &stream);
 
-    ttsPrintf(L", а %ls ", secondLabel->data);
-    printDefinition(secondDef + idx);
+    wstringStreamPrintf(&stream, L",\n а %ls ", secondLabel->data);
+    printDefinition(secondDef + idx, &stream);
 
     if (idx != 0) {
-        ttsPrintf(COMPARE_SIMILAR_FORMAT_STR);
+        wstringStreamPrintf(&stream, COMPARE_SIMILAR_FORMAT_STR);
         firstDef[idx].label[0] = L'\0';
-        printDefinition(firstDef);
+        printDefinition(firstDef, &stream);
     }
 
-    ttsPrintf(L"\n");
-    ttsFlush();
+    buttonSetLabel(&akinator->gui.questionBox, stream.buffer);
     free(firstDef);
     free(secondDef);
     return AKINATOR_SUCCESS;
@@ -434,6 +423,7 @@ static void akinatorChangeState(Akinator_t *akinator, enum akinatorState state) 
         case STATE_DEF_COMP_MODE:
             buttonSetLabel(&akinator->gui.buttonYes, GIVE_DEFINITION_LABEL);
             buttonSetLabel(&akinator->gui.buttonNo,  GIVE_COMPARISON_LABEL);
+            buttonSetLabel(&akinator->gui.questionBox, ENTER_LABELS_FORMAT_STR);
 
             textFormSetVisible(&akinator->gui.inputForm, true);
             textFormSetVisible(&akinator->gui.inputForm_b, true);

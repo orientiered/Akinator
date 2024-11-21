@@ -10,7 +10,15 @@ CMD_DEL = rm -rf $(addsuffix /*,$(OBJ_DIRS))
 CMD_MKDIR = mkdir -p $(OBJ_DIRS)
 
 ASAN_FLAGS := -fsanitize=address,alignment,bool,bounds,enum,float-cast-overflow,float-divide-by-zero,integer-divide-by-zero,leak,nonnull-attribute,null,object-size,return,returns-nonnull-attribute,shift,signed-integer-overflow,undefined,unreachable,vla-bound,vptr
-override CFLAGS := -g -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ -Waggressive-loop-optimizations -Wc++14-compat -Wmissing-declarations -Wcast-align -Wcast-qual -Wchar-subscripts -Wconditionally-supported -Wconversion -Wctor-dtor-privacy -Wempty-body -Wfloat-equal -Wformat-nonliteral -Wformat-security -Wformat-signedness -Wformat=2 -Winline -Wlogical-op -Wnon-virtual-dtor -Wopenmp-simd -Woverloaded-virtual -Wpacked -Wpointer-arith -Winit-self -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=2 -Wsuggest-attribute=noreturn -Wsuggest-final-methods -Wsuggest-final-types -Wsuggest-override -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunreachable-code -Wunused -Wuseless-cast -Wvariadic-macros -Wno-literal-suffix -Wno-missing-field-initializers -Wno-narrowing -Wno-old-style-cast -Wno-varargs -Wstack-protector -fcheck-new -fsized-deallocation -fstack-protector -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer -Wlarger-than=8192 -Wstack-usage=8192 -pie -fPIE -Werror=vla -fsanitize=address,alignment,bool,bounds,enum,float-cast-overflow,float-divide-by-zero,integer-divide-by-zero,leak,nonnull-attribute,null,object-size,return,returns-nonnull-attribute,shift,signed-integer-overflow,undefined,unreachable,vla-bound,vptr
+
+WARNING_FLAGS := -Wextra -Weffc++ -Waggressive-loop-optimizations -Wc++14-compat -Wmissing-declarations -Wcast-align -Wcast-qual -Wchar-subscripts -Wconditionally-supported -Wconversion \
+-Wctor-dtor-privacy -Wempty-body -Wfloat-equal -Wformat-nonliteral -Wformat-security -Wformat-signedness -Wformat=2 -Winline -Wlogical-op -Wnon-virtual-dtor -Wopenmp-simd \
+-Woverloaded-virtual -Wpacked -Wpointer-arith -Winit-self -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=2 -Wsuggest-attribute=noreturn \
+-Wsuggest-final-methods -Wsuggest-final-types -Wsuggest-override -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunreachable-code -Wunused -Wuseless-cast \
+-Wvariadic-macros -Wno-literal-suffix -Wno-missing-field-initializers -Wno-narrowing -Wno-old-style-cast -Wno-varargs -Wstack-protector
+
+FORMAT_FLAGS := -fcheck-new -fsized-deallocation -fstack-protector -fstrict-overflow -flto-odr-type-merging -fno-omit-frame-pointer
+override CFLAGS := -g -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall $(WARNING_FLAGS) $(FORMAT_FLAGS) -Wlarger-than=8192 -Wstack-usage=8192 -pie -fPIE -Werror=vla $(ASAN_FLAGS)
 
 CFLAGS_RELEASE := -O3 -std=c++17 -DNDEBUG
 
@@ -38,7 +46,7 @@ CONTAINER_SRCS  := $(addprefix containers/source/, tree.cpp cList.cpp)
 CONTAINER_OBJS  := $(subst source,$(OBJDIR), $(CONTAINER_SRCS:%.cpp=%.o))
 CONTAINER_DEPS  := $(CONTAINER_OBJS:%.o=%.d)
 
-LOCAL_SRCS      := $(addprefix source/, main.cpp akinator.cpp akinatorFileIO.cpp tts.cpp sf-button.cpp sf-textform.cpp)
+LOCAL_SRCS      := $(addprefix source/, main.cpp akinator.cpp akinatorFileIO.cpp tts.cpp sf-button.cpp sf-textform.cpp stringStream.cpp)
 LOCAL_OBJS      := $(subst source,$(OBJDIR), $(LOCAL_SRCS:%.cpp=%.o))
 LOCAL_DEPS      := $(LOCAL_OBJS:%.o=%.d)
 
